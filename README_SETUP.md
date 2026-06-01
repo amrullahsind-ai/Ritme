@@ -161,3 +161,18 @@ Versi ini cocok untuk pribadi, tapi belum untuk banyak user karena:
 - Google Sheets bukan database skala besar
 
 Untuk jualan/publik, nanti lebih cocok pindah ke Supabase/Firebase + backend proper.
+
+## Update Mobile UX
+
+Versi ini menambahkan:
+- Burger menu untuk tampilan HP.
+- Sidebar berubah menjadi drawer/slide menu.
+- Layout card lebih nyaman untuk mobile.
+- Energy Map lebih jelas: peta energi pagi/siang/sore/malam yang dipakai AI untuk menaruh habit sesuai kapasitas energi.
+
+Konsep Energy Map:
+- Energi tinggi: cocok untuk habit berat seperti belajar fokus, hafalan, olahraga.
+- Energi sedang: cocok untuk habit sedang seperti baca, review, journaling ringan.
+- Energi rendah: cocok untuk habit mini seperti 2 menit, checklist, atau persiapan besok.
+
+Energy Map dihitung dari jadwal yang kamu masukkan. Kalau jadwal pagi kamu beri energi tinggi, kartu Pagi akan lebih tinggi. Kalau jadwal malam sering rendah, AI sebaiknya tidak menaruh habit berat di malam.

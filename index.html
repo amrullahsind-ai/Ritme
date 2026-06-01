@@ -9,6 +9,17 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div class="mobile-topbar">
+    <button class="burger-btn" id="burgerBtn" aria-label="Buka menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="mobile-brand">
+      <div class="brand-mark mini">R</div>
+      <div><strong>Ritme</strong><small>AI HabitOS</small></div>
+    </div>
+    <button class="mobile-sync" id="mobileSyncBtn" aria-label="Sync">↻</button>
+  </div>
+  <div class="drawer-backdrop" id="drawerBackdrop"></div>
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
@@ -110,8 +121,10 @@
             <div id="anchorList" class="anchor-cloud"></div>
           </section>
         </div>
-        <section class="panel">
+        <section class="panel energy-panel">
           <div class="panel-head"><div><p class="eyebrow">Energy map</p><h3>Peta energi harian</h3></div></div>
+          <p class="muted energy-explain">Energy Map adalah peta jam/waktu ketika energimu biasanya tinggi, sedang, atau rendah. AI memakai ini untuk menaruh habit berat di waktu energi tinggi dan habit ringan di waktu energi rendah.</p>
+          <div class="energy-legend"><span><i class="energy-dot high"></i>Tinggi</span><span><i class="energy-dot mid"></i>Sedang</span><span><i class="energy-dot low"></i>Rendah</span></div>
           <div class="energy-bars" id="energyBars"></div>
         </section>
       </section>

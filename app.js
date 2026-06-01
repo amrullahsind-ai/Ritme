@@ -169,11 +169,39 @@ function renderHeatmap(){
     return `<div class="heat-row"><strong>${safe(h.name)}</strong>${cells}</div>`;
   }).join('');
 }
+function energyValue(level){
+  return level === 'tinggi' ? 82 : level === 'sedang' ? 58 : 34;
+}
+function energyClass(val){ return val >= 70 ? 'high' : val >= 50 ? 'mid' : 'low'; }
+function energyStatus(val){ return val >= 70 ? 'Energi tinggi' : val >= 50 ? 'Energi sedang' : 'Energi rendah'; }
+function energyNote(label, val){
+  if(val >= 70) return label === 'Pagi' ? 'Cocok untuk habit berat: hafalan, belajar fokus, olahraga.' : 'Cocok untuk pekerjaan yang butuh fokus.';
+  if(val >= 50) return 'Cocok untuk habit sedang: baca, review, journaling ringan.';
+  return 'Cocok untuk habit kecil saja: 2 menit, checklist, atau persiapan besok.';
+}
+function periodFromTime(t){
+  const h = Number(String(t || '00:00').slice(0,2));
+  if(h < 11) return 'Pagi';
+  if(h < 15) return 'Siang';
+  if(h < 19) return 'Sore';
+  return 'Malam';
+}
+function buildEnergyMap(){
+  const base = { Pagi:[80], Siang:[45], Sore:[62], Malam:[38] };
+  state.schedules.forEach(s => {
+    const period = periodFromTime(s.start);
+    base[period].push(energyValue(s.energy));
+  });
+  return Object.entries(base).map(([label, vals]) => [label, Math.round(vals.reduce((a,b)=>a+b,0)/vals.length)]);
+}
 function renderRhythm(){
   $('#scheduleList').innerHTML = state.schedules.map(s=>`<div class="item"><div><strong>${safe(s.name)}</strong><br><small class="muted">${safe(s.day)} • ${safe(s.start)}–${safe(s.end)} • energi ${safe(s.energy)}</small></div><button class="ghost-btn" onclick="deleteSchedule('${s.id}')">Hapus</button></div>`).join('') || '<div class="empty-state">Belum ada jadwal.</div>';
   $('#anchorList').innerHTML = state.anchors.map(a=>`<span class="anchor">${safe(a.trigger)} → ${safe(a.routine)} <button onclick="deleteAnchor('${a.id}')">×</button></span>`).join('') || '<div class="empty-state">Belum ada anchor.</div>';
-  const energyMap = [['Pagi',80],['Siang',45],['Sore',62],['Malam',38]];
-  $('#energyBars').innerHTML = energyMap.map(([label,val])=>`<div class="energy-card"><strong>${label}</strong><div class="bar-track"><div class="bar-fill" style="width:${val}%"></div></div><small class="muted">Energi ${val >= 70 ? 'tinggi' : val >= 50 ? 'sedang' : 'rendah'}</small></div>`).join('');
+  const energyMap = buildEnergyMap();
+  $('#energyBars').innerHTML = energyMap.map(([label,val])=>{
+    const cls = energyClass(val);
+    return `<div class="energy-card ${cls}"><strong>${label}<span class="energy-score">${val}%</span></strong><div class="bar-track"><div class="bar-fill" style="width:${val}%"></div></div><small class="muted energy-note">${energyStatus(val)}. ${energyNote(label,val)}</small></div>`;
+  }).join('');
 }
 function renderPlan(){
   $('#identityBox').textContent = state.identity || 'Belum ada identitas utama.';
@@ -366,11 +394,27 @@ function download(filename, text, type='application/json'){
 }
 
 // Events
+function openMobileMenu(){
+  $('.sidebar')?.classList.add('open');
+  $('#drawerBackdrop')?.classList.add('show');
+  $('#burgerBtn')?.classList.add('active');
+  $('#burgerBtn')?.setAttribute('aria-expanded','true');
+}
+function closeMobileMenu(){
+  $('.sidebar')?.classList.remove('open');
+  $('#drawerBackdrop')?.classList.remove('show');
+  $('#burgerBtn')?.classList.remove('active');
+  $('#burgerBtn')?.setAttribute('aria-expanded','false');
+}
 $$('.nav-item').forEach(btn=>btn.addEventListener('click',()=>{
   $$('.nav-item').forEach(b=>b.classList.remove('active')); btn.classList.add('active');
   $$('.page').forEach(p=>p.classList.remove('active-page')); $('#' + btn.dataset.page).classList.add('active-page');
   $('#pageTitle').textContent = btn.textContent;
+  closeMobileMenu();
 }));
+$('#burgerBtn')?.addEventListener('click',()=> $('.sidebar')?.classList.contains('open') ? closeMobileMenu() : openMobileMenu());
+$('#drawerBackdrop')?.addEventListener('click', closeMobileMenu);
+$('#mobileSyncBtn')?.addEventListener('click',()=>syncAll(true));
 $('#seedBtn').addEventListener('click', seedData);
 $('#resetBtn').addEventListener('click',()=>{ if(confirm('Reset semua data lokal?')){ state=structuredClone(initialState); saveState({sync:false}); }});
 $('#syncBtn').addEventListener('click',()=>syncAll(true));
