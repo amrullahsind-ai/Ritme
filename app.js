@@ -37,17 +37,36 @@ function scheduleSync(){
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => syncAll(false), 900);
 }
-async function apiCall(action, payload = {}){
+async function apiCall(action, payload = {}, opts = {}){
   if(!state.settings.endpoint) throw new Error('Endpoint Apps Script belum diisi.');
-  const body = JSON.stringify({ action, payload, clientTime: new Date().toISOString() });
-  const res = await fetch(state.settings.endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body
-  });
-  const text = await res.text();
-  try { return JSON.parse(text); } catch { return { ok:false, message:text || 'Response bukan JSON.' }; }
+  const timeoutMs = opts.timeoutMs || (action && String(action).toLowerCase().includes('ai') ? 18000 : 12000);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try{
+    const body = JSON.stringify({ action, payload, clientTime: new Date().toISOString() });
+    const res = await fetch(state.settings.endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body,
+      signal: controller.signal
+    });
+    const text = await res.text();
+    try { return JSON.parse(text); } catch { return { ok:false, message:text || 'Response bukan JSON.' }; }
+  }catch(err){
+    if(err && err.name === 'AbortError') throw new Error('AI terlalu lama merespons. Mode lokal dipakai dulu.');
+    throw err;
+  }finally{
+    clearTimeout(timer);
+  }
 }
+function friendlyAIError(err){
+  const msg = String(err && err.message ? err.message : err || '').toLowerCase();
+  if(msg.includes('429') || msg.includes('too many requests')) return 'AI online sedang terlalu ramai/kena limit. Aku pakai mode lokal dulu ya. Coba lagi beberapa menit lagi.';
+  if(msg.includes('abort') || msg.includes('terlalu lama') || msg.includes('timeout')) return 'AI online terlalu lama merespons. Aku pakai mode lokal dulu supaya kamu tetap bisa lanjut.';
+  if(msg.includes('failed to fetch') || msg.includes('network')) return 'Koneksi ke backend belum stabil. Aku pakai mode lokal dulu.';
+  return 'AI online belum bisa dipanggil. Aku pakai mode lokal dulu.';
+}
+
 async function syncAll(showAlert = true){
   if(!state.settings.endpoint) { updateSyncStatus(); return; }
   try {
@@ -230,7 +249,7 @@ function renderInsight(){
 }
 function renderChat(){
   const box = $('#chatBox');
-  const intro = '<div class="msg ai">Aku bisa bantu menyusun, mendiagnosis, dan merevisi habitmu. Kalau endpoint Apps Script sudah aktif, aku akan pakai NVIDIA AI. Kalau belum, aku pakai simulasi lokal.</div>';
+  const intro = '<div class="msg ai">Aku bisa bantu menyusun, mendiagnosis, dan merevisi habitmu. Kalau endpoint Apps Script sudah aktif, aku akan pakai Gemini Flash. Kalau belum, aku pakai simulasi lokal.</div>';
   const messages = state.chat.length ? state.chat.map(m=>`<div class="msg ${m.role}">${safe(m.text)}</div>`).join('') : intro;
   const thinking = aiThinking ? '<div class="msg ai thinking"><span>AI sedang berpikir</span><span class="typing-dots"><i></i><i></i><i></i></span></div>' : '';
   box.innerHTML = messages + thinking;
@@ -277,14 +296,14 @@ async function runAIFitting(){
   if(state.settings.endpoint){
     try{
       $('#fitBtn').textContent = 'Meminta AI...';
-      const result = await apiCall('aiHabitFitting', { state: exportableState() });
+      const result = await apiCall('aiHabitFitting', { state: exportableState() }, { timeoutMs: 22000 });
       if(!result.ok) throw new Error(result.error || 'AI gagal.');
       applyAIPlan(result.data?.plans || result.plans || []);
       state.chat.push({role:'ai', text: result.data?.summary || result.summary || 'AI sudah menyusun habit ke ritme hidupmu.'});
       saveState();
       return;
     }catch(err){
-      alert('AI NVIDIA gagal, pakai simulasi lokal dulu. Detail: ' + err.message);
+      alert(friendlyAIError(err));
     }finally{ $('#fitBtn').textContent = 'Jalankan AI Fitting'; }
   }
   localFit();
@@ -313,10 +332,11 @@ function localFit(){
     if(name.includes('jurnal') || name.includes('tidur')) pick = anchors.find(a=>a.trigger.toLowerCase().includes('tidur')) || pick;
     return { ...h, anchor: pick.trigger, reason: `Cocok ditempel ke ${pick.trigger} karena rutinitas ini sudah ada dan lebih mudah dijadikan pemicu.` };
   });
-  state.chat.push({role:'ai', text:'Aku sudah menyusun habit memakai simulasi lokal. Hubungkan Apps Script untuk memakai NVIDIA AI asli.'});
+  state.chat.push({role:'ai', text:'Aku sudah menyusun habit memakai simulasi lokal. Hubungkan Apps Script untuk memakai Gemini Flash asli.'});
   saveState();
 }
 async function askCoach(message){
+  if(aiThinking) return;
   if(!message || !String(message).trim()) return;
   state.chat.push({role:'user', text:message});
   aiThinking = true;
@@ -328,7 +348,7 @@ async function askCoach(message){
   setCoachLoading(true);
   if(state.settings.endpoint){
     try{
-      const result = await apiCall('aiCoach', { message, state: exportableState() });
+      const result = await apiCall('aiCoach', { message, state: exportableState() }, { timeoutMs: 20000 });
       if(!result.ok) throw new Error(result.error || 'AI gagal.');
       aiThinking = false;
       state.chat.push({role:'ai', text: result.data?.answer || result.answer || 'AI sudah merespons.'});
@@ -337,7 +357,7 @@ async function askCoach(message){
       return;
     }catch(err){
       aiThinking = false;
-      state.chat.push({role:'ai', text:'AI NVIDIA gagal dipanggil, jadi aku jawab dengan simulasi lokal. Detail: ' + err.message});
+      state.chat.push({role:'ai', text: friendlyAIError(err)});
     }
   }
   await new Promise(resolve => setTimeout(resolve, 650));
@@ -350,14 +370,14 @@ async function askCoach(message){
 async function runWeeklyAI(){
   if(state.settings.endpoint){
     try{
-      const result = await apiCall('weeklyReview', { state: exportableState() });
+      const result = await apiCall('weeklyReview', { state: exportableState() }, { timeoutMs: 22000 });
       if(!result.ok) throw new Error(result.error || 'AI gagal.');
       const text = result.data?.review || result.review || 'Review mingguan selesai.';
       $('#recommendationList').innerHTML = `<div class="recommend">${safe(text)}</div>` + $('#recommendationList').innerHTML;
       state.chat.push({role:'ai', text});
       saveState();
       return;
-    }catch(err){ alert('Weekly AI gagal: ' + err.message); }
+    }catch(err){ state.chat.push({role:'ai', text: friendlyAIError(err)}); saveState(); alert(friendlyAIError(err)); }
   } else alert('Isi endpoint Apps Script dulu untuk AI Review asli.');
 }
 

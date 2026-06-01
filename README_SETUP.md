@@ -1,4 +1,4 @@
-# Ritme HabitOS Full — Setup PWA + Google Sheets + NVIDIA AI
+# Ritme HabitOS Full — Setup PWA + Google Sheets + Gemini AI
 
 Versi ini dibuat untuk pemakaian pribadi/uji coba beberapa bulan.
 
@@ -7,7 +7,7 @@ Arsitektur:
 ```text
 PWA / Web App Ritme -> Google Apps Script Web App -> Google Sheets
                               |
-                              -> NVIDIA API / DeepSeek model
+                              -> Gemini API / Flash model
 ```
 
 Aplikasi tetap dibuka dari file/hosting PWA, bukan dari Apps Script. Apps Script hanya dipakai sebagai backend/API untuk menyimpan data dan memanggil AI.
@@ -44,7 +44,7 @@ Kalau Apps Script dibuat dari dalam Spreadsheet, kamu tidak wajib mengisi `SPREA
 
 ---
 
-## 3. Simpan API key NVIDIA dengan aman
+## 3. Simpan API key Gemini dengan aman
 
 Jangan taruh API key di frontend/app.js.
 
@@ -55,10 +55,10 @@ Di Apps Script:
 3. Tambahkan property:
 
 ```text
-NVIDIA_API_KEY = nvapi-key-baru-kamu
+GEMINI_API_KEY = API-key-Gemini-kamu
 ```
 
-Penting: key yang pernah kamu tempel di chat sebaiknya dihapus/rotate, lalu pakai key baru.
+Penting: jangan pernah membagikan API key ke orang lain. Kalau sudah pernah terekspos, hapus/rotate lalu pakai key baru.
 
 Opsional, kalau script tidak bound ke spreadsheet:
 
@@ -113,7 +113,7 @@ Kalau berhasil, sheet otomatis berisi tab:
 
 ## 6. Cara pakai AI
 
-Setelah endpoint aktif dan API key NVIDIA sudah disimpan di Apps Script, kamu bisa pakai:
+Setelah endpoint aktif dan API key Gemini sudah disimpan di Apps Script, kamu bisa pakai:
 
 - `AI Habit Fitting` di menu Habit Plan.
 - `AI Coach` di menu AI Coach.
@@ -176,3 +176,21 @@ Konsep Energy Map:
 - Energi rendah: cocok untuk habit mini seperti 2 menit, checklist, atau persiapan besok.
 
 Energy Map dihitung dari jadwal yang kamu masukkan. Kalau jadwal pagi kamu beri energi tinggi, kartu Pagi akan lebih tinggi. Kalau jadwal malam sering rendah, AI sebaiknya tidak menaruh habit berat di malam.
+
+
+## Catatan kalau AI Gemini sering gagal / 429
+
+Kalau muncul pesan AI online sedang ramai atau kena limit, aplikasi tidak rusak. Versi ini sudah punya timeout dan fallback lokal otomatis, jadi AI Coach tidak akan mandek terlalu lama.
+
+Penyebab umum:
+- Gemini sedang rate limit / Too Many Requests.
+- Model terlalu berat.
+- Request terlalu sering dalam waktu dekat.
+
+Opsional: di Script Properties kamu bisa menambahkan:
+
+```text
+GEMINI_MODEL=gemini-2.0-flash
+```
+
+Kalau Gemini menyediakan model yang lebih ringan di akunmu, isi `GEMINI_MODEL` dengan model ringan tersebut.
