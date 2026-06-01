@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f7ff" />
+  <title>Ritme HabitOS Full</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">R</div>
+        <div>
+          <h1>Ritme</h1>
+          <p>AI HabitOS Full</p>
+        </div>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-page="dashboard">Dashboard</button>
+        <button class="nav-item" data-page="rhythm">Ritme Hidup</button>
+        <button class="nav-item" data-page="plan">Habit Plan</button>
+        <button class="nav-item" data-page="checkin">Check-in</button>
+        <button class="nav-item" data-page="insight">Insight</button>
+        <button class="nav-item" data-page="coach">AI Coach</button>
+        <button class="nav-item" data-page="settings">Sync & Backup</button>
+      </nav>
+      <div class="side-card">
+        <span class="small-label">Status sync</span>
+        <strong id="syncStatus">Lokal</strong>
+        <p id="syncDesc">Data tersimpan di browser. Hubungkan Apps Script untuk auto-save ke Spreadsheet.</p>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="todayLabel">Hari ini</p>
+          <h2 id="pageTitle">Dashboard</h2>
+        </div>
+        <div class="top-actions">
+          <button class="ghost-btn" id="seedBtn">Isi contoh</button>
+          <button class="ghost-btn" id="syncBtn">Sync</button>
+          <button class="danger-btn" id="resetBtn">Reset</button>
+        </div>
+      </header>
+
+      <section id="dashboard" class="page active-page">
+        <div class="hero-grid">
+          <div class="hero-card glass">
+            <div>
+              <p class="eyebrow">Ritme minggu ini</p>
+              <h3><span id="scoreText">0</span>%</h3>
+              <p id="scoreDesc">Mulai bangun ritme pertamamu.</p>
+            </div>
+            <div class="ring" style="--value:0"><span id="ringText">0%</span></div>
+          </div>
+          <div class="ai-card">
+            <p class="eyebrow">AI Insight</p>
+            <h3 id="aiInsightTitle">Belum ada pola</h3>
+            <p id="aiInsightBody">Isi ritme hidup dan habit plan dulu agar AI bisa membaca polanya.</p>
+          </div>
+        </div>
+        <div class="stat-grid">
+          <article class="stat-card"><span>Habit aktif</span><strong id="activeHabitCount">0</strong><small>sedang berjalan</small></article>
+          <article class="stat-card"><span>Streak terbaik</span><strong id="bestStreak">0</strong><small>hari</small></article>
+          <article class="stat-card"><span>Paling stabil</span><strong id="stableHabit">-</strong><small>habit terbaik</small></article>
+          <article class="stat-card"><span>Perlu perhatian</span><strong id="weakHabit">-</strong><small>habit tersulit</small></article>
+        </div>
+        <div class="content-grid two">
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Progress</p><h3>Habit minggu ini</h3></div></div>
+            <div id="habitProgressList" class="progress-list empty-state">Belum ada habit aktif.</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Timeline</p><h3>Hari ini</h3></div></div>
+            <div id="timelineList" class="timeline empty-state">Belum ada jadwal.</div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Heatmap</p><h3>Konsistensi 7 hari</h3></div></div>
+          <div id="heatmap" class="heatmap empty-state">Belum ada check-in.</div>
+        </section>
+      </section>
+
+      <section id="rhythm" class="page">
+        <div class="content-grid two">
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Jadwal tetap</p><h3>Blok waktu hidupmu</h3></div></div>
+            <form id="scheduleForm" class="form-grid">
+              <input name="name" placeholder="Contoh: Kuliah" required />
+              <select name="day"><option>Setiap hari</option><option>Senin-Jumat</option><option>Weekend</option></select>
+              <input name="start" type="time" required />
+              <input name="end" type="time" required />
+              <select name="energy"><option value="tinggi">Energi tinggi</option><option value="sedang">Energi sedang</option><option value="rendah">Energi rendah</option></select>
+              <button class="primary-btn">Tambah jadwal</button>
+            </form>
+            <div id="scheduleList" class="item-list"></div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Routine anchors</p><h3>Kebiasaan lama</h3></div></div>
+            <form id="anchorForm" class="form-grid">
+              <input name="trigger" placeholder="Contoh: Setelah Subuh" required />
+              <input name="routine" placeholder="Contoh: Duduk sebentar" required />
+              <select name="type"><option value="baik">Baik</option><option value="netral">Netral</option><option value="buruk">Buruk</option></select>
+              <button class="primary-btn">Tambah anchor</button>
+            </form>
+            <div id="anchorList" class="anchor-cloud"></div>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Energy map</p><h3>Peta energi harian</h3></div></div>
+          <div class="energy-bars" id="energyBars"></div>
+        </section>
+      </section>
+
+      <section id="plan" class="page">
+        <div class="content-grid two">
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Identitas</p><h3>Aku ingin menjadi...</h3></div></div>
+            <form id="identityForm" class="form-grid single">
+              <input name="identity" placeholder="Contoh: Muslim produktif dan pelajar disiplin" />
+              <button class="primary-btn">Simpan identitas</button>
+            </form>
+            <div id="identityBox" class="identity-box">Belum ada identitas utama.</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Habit baru</p><h3>Bangun kebiasaan</h3></div></div>
+            <form id="habitForm" class="form-grid">
+              <input name="name" placeholder="Contoh: Tilawah" required />
+              <input name="target" placeholder="Target: 5 ayat / 3 menit" required />
+              <select name="category"><option>Ibadah</option><option>Belajar</option><option>Kesehatan</option><option>Karya</option><option>Relasi</option></select>
+              <select name="difficulty"><option value="ringan">Ringan</option><option value="sedang">Sedang</option><option value="berat">Berat</option></select>
+              <select name="frequency"><option value="7">Harian</option><option value="5">5x seminggu</option><option value="3">3x seminggu</option></select>
+              <button class="primary-btn">Tambah habit</button>
+            </form>
+          </section>
+        </div>
+        <section class="panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">AI Habit Fitting</p><h3>Susun habit ke ritme hidup</h3></div>
+            <button class="primary-btn" id="fitBtn">Jalankan AI Fitting</button>
+          </div>
+          <div id="habitPlanList" class="plan-grid empty-state">Belum ada habit. Tambahkan habit baru dulu.</div>
+        </section>
+      </section>
+
+      <section id="checkin" class="page">
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Aksi harian</p><h3>Check-in hari ini</h3></div></div>
+          <div id="checkinList" class="checkin-list empty-state">Belum ada habit aktif untuk hari ini.</div>
+        </section>
+      </section>
+
+      <section id="insight" class="page">
+        <div class="content-grid two">
+          <section class="panel">
+            <div class="panel-head"><div><p class="eyebrow">Analisis</p><h3>Alasan gagal</h3></div></div>
+            <div id="failureChart" class="failure-chart empty-state">Belum ada data gagal.</div>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <div><p class="eyebrow">Rekomendasi</p><h3>Minggu depan</h3></div>
+              <button class="ghost-btn" id="weeklyAI">AI Review</button>
+            </div>
+            <div id="recommendationList" class="recommend-list"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="coach" class="page">
+        <section class="panel coach-panel">
+          <div class="panel-head"><div><p class="eyebrow">AI Coach</p><h3>Coach sistem hidup</h3></div></div>
+          <div class="quick-prompts">
+            <button data-prompt="Kenapa habitku sering gagal?">Kenapa sering gagal?</button>
+            <button data-prompt="Susun minggu depanku">Susun minggu depan</button>
+            <button data-prompt="Habitku terlalu berat">Habit terlalu berat</button>
+          </div>
+          <div id="chatBox" class="chat-box"></div>
+          <form id="coachForm" class="coach-form">
+            <input name="message" placeholder="Ceritakan kondisi habitmu..." required />
+            <button class="primary-btn">Kirim</button>
+          </form>
+        </section>
+      </section>
+
+      <section id="settings" class="page">
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Google Sheets Backend</p><h3>Sync & Backup</h3></div></div>
+          <p class="muted">Masukkan URL Web App Google Apps Script. Aplikasi tetap PWA/installable, Apps Script hanya jadi jembatan ke Spreadsheet dan NVIDIA AI.</p>
+          <form id="settingsForm" class="form-grid single">
+            <input name="endpoint" placeholder="https://script.google.com/macros/s/.../exec" />
+            <button class="primary-btn">Simpan endpoint</button>
+          </form>
+          <div class="top-actions" style="margin: 14px 0; flex-wrap: wrap;">
+            <button class="ghost-btn" id="testEndpoint">Test koneksi</button>
+            <button class="ghost-btn" id="exportJson">Export JSON</button>
+            <button class="ghost-btn" id="importJsonBtn">Import JSON</button>
+            <input id="importJson" type="file" accept="application/json" style="display:none" />
+            <button class="danger-btn" id="wipeLocal">Hapus data lokal</button>
+          </div>
+          <div class="identity-box" id="backendInfo">Belum ada endpoint.</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Panduan singkat</p><h3>Cara pakai backend</h3></div></div>
+          <div class="recommend-list">
+            <div class="recommend">1. Buka Google Sheets kosong, lalu Extensions → Apps Script.</div>
+            <div class="recommend">2. Copy isi file <b>apps-script/Code.gs</b> ke Apps Script.</div>
+            <div class="recommend">3. Simpan API key NVIDIA di Script Properties dengan nama <b>NVIDIA_API_KEY</b>.</div>
+            <div class="recommend">4. Deploy sebagai Web App: Execute as Me, Who has access: Anyone.</div>
+            <div class="recommend">5. Paste URL Web App di halaman ini, lalu klik Test koneksi.</div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div id="failModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Kenapa belum terlaksana?</h3>
+      <p>Pilih alasan agar AI bisa memperbaiki rencana berikutnya.</p>
+      <div class="reason-grid" id="reasonGrid"></div>
+      <textarea id="failNote" placeholder="Catatan singkat, opsional..."></textarea>
+      <div class="modal-actions">
+        <button class="ghost-btn" id="closeModal">Batal</button>
+        <button class="primary-btn" id="saveFail">Simpan</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
