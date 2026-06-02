@@ -1,4 +1,4 @@
-# Ritme Student — Vercel API Version
+# Ritme Student — Vercel API Version (Groq Ready)
 
 Versi ini dibuat agar aplikasi tidak lagi meminta endpoint di menu. Frontend langsung memanggil endpoint relatif:
 
@@ -11,25 +11,36 @@ Artinya AI dan sync berjalan lewat Vercel API.
 ## Struktur
 
 - `index.html`, `styles.css`, `app.js` = PWA/frontend
-- `api/ritme.js` = backend Vercel untuk Gemini dan sync
+- `api/ritme.js` = backend Vercel untuk Groq/Gemini dan sync
 - `apps-script/Code.gs` = jembatan Google Sheets, opsional tapi dipakai untuk sync ke Spreadsheet
 - `manifest.json`, `service-worker.js`, `icon.svg` = PWA
 
 ## Environment Variables di Vercel
 
-Wajib untuk AI:
+### Opsi 1 — Pakai Groq (disarankan kalau kamu mau pindah dari Gemini)
 
 ```txt
-GEMINI_API_KEY=isi_api_key_gemini_kamu
+AI_PROVIDER=groq
+GROQ_API_KEY=gsk_isi_key_groq_kamu
+GROQ_MODEL=llama-3.1-8b-instant
 ```
 
-Opsional:
+Alternatif model Groq yang bisa kamu coba:
 
 ```txt
+llama-3.3-70b-versatile
+qwen/qwen3-32b
+```
+
+### Opsi 2 — Pakai Gemini
+
+```txt
+AI_PROVIDER=gemini
+GEMINI_API_KEY=isi_api_key_gemini_kamu
 GEMINI_MODEL=gemini-2.0-flash
 ```
 
-Untuk sync ke Google Sheets:
+### Sync ke Google Sheets
 
 ```txt
 APPS_SCRIPT_URL=https://script.google.com/macros/s/xxxx/exec
@@ -56,11 +67,24 @@ Kalau `APPS_SCRIPT_URL` belum diisi, aplikasi tetap jalan dan data tetap tersimp
 
 1. Upload folder ini ke GitHub.
 2. Import repo ke Vercel.
-3. Set Environment Variables:
-   - `GEMINI_API_KEY`
-   - `GEMINI_MODEL` opsional
-   - `APPS_SCRIPT_URL` opsional untuk sync Sheets
-4. Deploy.
+3. Set Environment Variables sesuai provider AI yang kamu pilih.
+4. Redeploy setelah env ditambahkan/diubah.
+
+## Cek apakah env sudah kebaca
+
+Buka:
+
+```txt
+https://namaprojectkamu.vercel.app/api/ritme
+```
+
+Kalau berhasil, akan muncul JSON semacam:
+
+```json
+{ "ok": true, "service": "Ritme Student API", "provider": "groq", "model": "llama-3.1-8b-instant" }
+```
+
+Kalau provider masih `gemini`, berarti environment variable `AI_PROVIDER=groq` belum kebaca atau belum redeploy.
 
 ## Catatan penggunaan
 

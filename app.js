@@ -250,7 +250,7 @@ function renderInsight(){
 }
 function renderChat(){
   const box = $('#chatBox');
-  const intro = '<div class="msg ai">Aku bisa bantu menyusun, mendiagnosis, dan merevisi habitmu. Aku akan memakai Gemini Flash lewat Vercel API. Kalau AI online gagal, aku tetap bisa bantu dengan mode lokal.</div>';
+  const intro = '<div class="msg ai">Aku bisa bantu menyusun, mendiagnosis, dan merevisi habitmu. Aku akan memakai AI online lewat Vercel API (Groq atau Gemini, sesuai setting). Kalau AI online gagal, aku tetap bisa bantu dengan mode lokal.</div>';
   const messages = state.chat.length ? state.chat.map(m=>`<div class="msg ${m.role}">${safe(m.text)}</div>`).join('') : intro;
   const thinking = aiThinking ? '<div class="msg ai thinking"><span>AI sedang berpikir</span><span class="typing-dots"><i></i><i></i><i></i></span></div>' : '';
   box.innerHTML = messages + thinking;
