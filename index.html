@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#f4f7ff" />
-  <title>Ritme HabitOS Full</title>
+  <title>Ritme Student</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="styles.css" />
 </head>
@@ -26,7 +26,7 @@
         <div class="brand-mark">R</div>
         <div>
           <h1>Ritme</h1>
-          <p>AI HabitOS Full</p>
+          <p>AI Habit Coach Mahasiswa</p>
         </div>
       </div>
       <nav class="nav">
@@ -36,12 +36,12 @@
         <button class="nav-item" data-page="checkin">Check-in</button>
         <button class="nav-item" data-page="insight">Insight</button>
         <button class="nav-item" data-page="coach">AI Coach</button>
-        <button class="nav-item" data-page="settings">Sync & Backup</button>
+        <button class="nav-item" data-page="guide">Panduan</button>
       </nav>
       <div class="side-card">
         <span class="small-label">Status sync</span>
         <strong id="syncStatus">Lokal</strong>
-        <p id="syncDesc">Data tersimpan di browser. Hubungkan Apps Script untuk auto-save ke Spreadsheet.</p>
+        <p id="syncDesc">Data tersimpan lokal dan otomatis sync lewat Vercel API ke Google Sheets.</p>
       </div>
     </aside>
 
@@ -74,6 +74,14 @@
             <p id="aiInsightBody">Isi ritme hidup dan habit plan dulu agar AI bisa membaca polanya.</p>
           </div>
         </div>
+        <section class="panel start-panel">
+          <div class="panel-head"><div><p class="eyebrow">Mulai dari sini</p><h3>Ritme dipakai buat apa?</h3></div></div>
+          <div class="start-grid">
+            <div class="start-card"><strong>1. Isi Ritme Hidup</strong><p>Masukkan jadwal tetap kalau ada. Kalau kosong, cukup isi anchor seperti setelah bangun, setelah makan, setelah sholat, atau sebelum tidur.</p></div>
+            <div class="start-card"><strong>2. Buat Habit Plan</strong><p>Tulis kebiasaan yang ingin kamu bentuk. AI akan menempelkan habit ke waktu/anchor yang paling realistis.</p></div>
+            <div class="start-card"><strong>3. Check-in Harian</strong><p>Centang selesai/sebagian/gagal. Alasan gagal dipakai AI untuk memperbaiki rencana berikutnya.</p></div>
+          </div>
+        </section>
         <div class="stat-grid">
           <article class="stat-card"><span>Habit aktif</span><strong id="activeHabitCount">0</strong><small>sedang berjalan</small></article>
           <article class="stat-card"><span>Streak terbaik</span><strong id="bestStreak">0</strong><small>hari</small></article>
@@ -100,6 +108,7 @@
         <div class="content-grid two">
           <section class="panel">
             <div class="panel-head"><div><p class="eyebrow">Jadwal tetap</p><h3>Blok waktu hidupmu</h3></div></div>
+            <div class="helper-box"><strong>Isi kalau memang ada jadwal.</strong><br><span>Contoh: kuliah, kerja, organisasi, kelas, perjalanan. Kalau harimu kosong atau tidak punya jadwal tetap, bagian ini boleh dibiarkan kosong.</span></div>
             <form id="scheduleForm" class="form-grid">
               <input name="name" placeholder="Contoh: Kuliah" required />
               <select name="day"><option>Setiap hari</option><option>Senin-Jumat</option><option>Weekend</option></select>
@@ -112,6 +121,7 @@
           </section>
           <section class="panel">
             <div class="panel-head"><div><p class="eyebrow">Routine anchors</p><h3>Kebiasaan lama</h3></div></div>
+            <div class="helper-box"><strong>Ini lebih penting dari jadwal.</strong><br><span>Anchor adalah momen yang hampir pasti terjadi: setelah bangun, setelah mandi, setelah makan, setelah sholat, sebelum tidur. Habit baru akan ditempel ke sini.</span></div>
             <form id="anchorForm" class="form-grid">
               <input name="trigger" placeholder="Contoh: Setelah Subuh" required />
               <input name="routine" placeholder="Contoh: Duduk sebentar" required />
@@ -123,7 +133,7 @@
         </div>
         <section class="panel energy-panel">
           <div class="panel-head"><div><p class="eyebrow">Energy map</p><h3>Peta energi harian</h3></div></div>
-          <p class="muted energy-explain">Energy Map adalah peta jam/waktu ketika energimu biasanya tinggi, sedang, atau rendah. AI memakai ini untuk menaruh habit berat di waktu energi tinggi dan habit ringan di waktu energi rendah.</p>
+          <p class="muted energy-explain">Energy Map adalah peta jam/waktu ketika energimu biasanya tinggi, sedang, atau rendah. AI memakai ini untuk menaruh habit berat di waktu energi tinggi dan habit ringan di waktu energi rendah. Kalau kamu belum isi jadwal, Ritme memakai pola default mahasiswa: pagi lebih kuat, siang turun, sore sedang, malam lebih ringan.</p>
           <div class="energy-legend"><span><i class="energy-dot high"></i>Tinggi</span><span><i class="energy-dot mid"></i>Sedang</span><span><i class="energy-dot low"></i>Rendah</span></div>
           <div class="energy-bars" id="energyBars"></div>
         </section>
@@ -133,6 +143,7 @@
         <div class="content-grid two">
           <section class="panel">
             <div class="panel-head"><div><p class="eyebrow">Identitas</p><h3>Aku ingin menjadi...</h3></div></div>
+            <div class="helper-box"><strong>Ini arah besarnya.</strong><br><span>Contoh: mahasiswa disiplin, muslim produktif, tubuh sehat, penulis konsisten. Tidak harus sempurna.</span></div>
             <form id="identityForm" class="form-grid single">
               <input name="identity" placeholder="Contoh: Muslim produktif dan pelajar disiplin" />
               <button class="primary-btn">Simpan identitas</button>
@@ -141,6 +152,7 @@
           </section>
           <section class="panel">
             <div class="panel-head"><div><p class="eyebrow">Habit baru</p><h3>Bangun kebiasaan</h3></div></div>
+            <div class="helper-box"><strong>Mulai kecil dulu.</strong><br><span>Jangan masukkan 10 habit berat. Untuk awal, cukup 2–3 habit kecil seperti baca 2 halaman, belajar 15 menit, atau tilawah 5 ayat.</span></div>
             <form id="habitForm" class="form-grid">
               <input name="name" placeholder="Contoh: Tilawah" required />
               <input name="target" placeholder="Target: 5 ayat / 3 menit" required />
@@ -199,34 +211,27 @@
         </section>
       </section>
 
-      <section id="settings" class="page">
+      <section id="guide" class="page">
         <section class="panel">
-          <div class="panel-head"><div><p class="eyebrow">Google Sheets Backend</p><h3>Sync & Backup</h3></div></div>
-          <p class="muted">Masukkan URL Web App Google Apps Script. Aplikasi tetap PWA/installable, Apps Script hanya jadi jembatan ke Spreadsheet dan Gemini Flash.</p>
-          <form id="settingsForm" class="form-grid single">
-            <input name="endpoint" placeholder="https://script.google.com/macros/s/.../exec" />
-            <button class="primary-btn">Simpan endpoint</button>
-          </form>
-          <div class="top-actions" style="margin: 14px 0; flex-wrap: wrap;">
-            <button class="ghost-btn" id="testEndpoint">Test koneksi</button>
-            <button class="ghost-btn" id="exportJson">Export JSON</button>
-            <button class="ghost-btn" id="importJsonBtn">Import JSON</button>
-            <input id="importJson" type="file" accept="application/json" style="display:none" />
-            <button class="danger-btn" id="wipeLocal">Hapus data lokal</button>
-          </div>
-          <div class="identity-box" id="backendInfo">Belum ada endpoint.</div>
-        </section>
-        <section class="panel">
-          <div class="panel-head"><div><p class="eyebrow">Panduan singkat</p><h3>Cara pakai backend</h3></div></div>
+          <div class="panel-head"><div><p class="eyebrow">Panduan</p><h3>Cara kerja Ritme</h3></div></div>
           <div class="recommend-list">
-            <div class="recommend">1. Buka Google Sheets kosong, lalu Extensions → Apps Script.</div>
-            <div class="recommend">2. Copy isi file <b>apps-script/Code.gs</b> ke Apps Script.</div>
-            <div class="recommend">3. Simpan API key Gemini di Script Properties dengan nama <b>GEMINI_API_KEY</b>.</div>
-            <div class="recommend">4. Deploy sebagai Web App: Execute as Me, Who has access: Anyone.</div>
-            <div class="recommend">5. Paste URL Web App di halaman ini, lalu klik Test koneksi.</div>
+            <div class="recommend"><b>Ritme Hidup</b> dipakai untuk membaca pola harianmu. Jadwal boleh kosong, tapi anchor sebaiknya diisi.</div>
+            <div class="recommend"><b>Habit Plan</b> dipakai untuk menulis kebiasaan baru. AI akan menempelkan habit ke anchor/jadwal yang cocok.</div>
+            <div class="recommend"><b>Check-in</b> dipakai setiap hari. Kalau gagal, pilih alasannya agar AI bisa memperbaiki sistem.</div>
+            <div class="recommend"><b>Insight</b> menunjukkan pola gagal, habit yang stabil, dan saran minggu depan.</div>
+            <div class="recommend"><b>Sync & AI</b> berjalan otomatis lewat Vercel API. Kamu tidak perlu memasukkan endpoint di aplikasi.</div>
           </div>
         </section>
-      </section>
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Kalau tidak punya jadwal?</p><h3>Tetap bisa dipakai</h3></div></div>
+          <p class="muted">Banyak mahasiswa tidak punya jadwal yang rapi setiap hari. Tidak masalah. Ritme bisa bekerja hanya dengan anchor sederhana.</p>
+          <div class="start-grid">
+            <div class="start-card"><strong>Anchor ibadah</strong><p>Setelah Subuh, setelah Maghrib, setelah Isya.</p></div>
+            <div class="start-card"><strong>Anchor tubuh</strong><p>Setelah bangun, setelah mandi, setelah makan, sebelum tidur.</p></div>
+            <div class="start-card"><strong>Anchor digital</strong><p>Sebelum buka TikTok, setelah buka laptop, setelah charger HP.</p></div>
+          </div>
+        </section>
+      </section></section>
     </main>
   </div>
 

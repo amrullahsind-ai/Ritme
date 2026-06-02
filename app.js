@@ -3,6 +3,7 @@ const $$ = (q) => [...document.querySelectorAll(q)];
 const todayISO = () => new Date().toISOString().slice(0,10);
 const days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
 const reasons = ['Lupa','Capek','Malas','Waktu tidak cocok','Target terlalu berat','Kegiatan mendadak','Lingkungan tidak mendukung','Mood jelek'];
+const RITME_API_URL = window.RITME_API_URL || '/api/ritme';
 
 const initialState = {
   identity: '',
@@ -38,20 +39,22 @@ function scheduleSync(){
   syncTimer = setTimeout(() => syncAll(false), 900);
 }
 async function apiCall(action, payload = {}, opts = {}){
-  if(!state.settings.endpoint) throw new Error('Endpoint Apps Script belum diisi.');
   const timeoutMs = opts.timeoutMs || (action && String(action).toLowerCase().includes('ai') ? 18000 : 12000);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try{
     const body = JSON.stringify({ action, payload, clientTime: new Date().toISOString() });
-    const res = await fetch(state.settings.endpoint, {
+    const res = await fetch(RITME_API_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      headers: { 'Content-Type': 'application/json' },
       body,
       signal: controller.signal
     });
     const text = await res.text();
-    try { return JSON.parse(text); } catch { return { ok:false, message:text || 'Response bukan JSON.' }; }
+    let data;
+    try { data = JSON.parse(text); } catch { data = { ok:false, message:text || 'Response bukan JSON.' }; }
+    if(!res.ok && !data.error) data.error = `HTTP ${res.status}`;
+    return data;
   }catch(err){
     if(err && err.name === 'AbortError') throw new Error('AI terlalu lama merespons. Mode lokal dipakai dulu.');
     throw err;
@@ -59,6 +62,7 @@ async function apiCall(action, payload = {}, opts = {}){
     clearTimeout(timer);
   }
 }
+
 function friendlyAIError(err){
   const msg = String(err && err.message ? err.message : err || '').toLowerCase();
   if(msg.includes('429') || msg.includes('too many requests')) return 'AI online sedang terlalu ramai/kena limit. Aku pakai mode lokal dulu ya. Coba lagi beberapa menit lagi.';
@@ -68,7 +72,6 @@ function friendlyAIError(err){
 }
 
 async function syncAll(showAlert = true){
-  if(!state.settings.endpoint) { updateSyncStatus(); return; }
   try {
     const result = await apiCall('saveAll', { state: exportableState() });
     if(!result.ok) throw new Error(result.error || result.message || 'Sync gagal.');
@@ -81,7 +84,7 @@ async function syncAll(showAlert = true){
     state.settings.lastStatus = 'Sync gagal';
     localStorage.setItem('ritme-state-full', JSON.stringify(state));
     updateSyncStatus();
-    if(showAlert) alert('Sync gagal: ' + err.message + '\n\nKalau ini karena CORS, cek deployment Apps Script dan ikuti README.');
+    if(showAlert) alert('Sync online gagal. Data tetap tersimpan lokal. Cek environment variable Vercel/APPS_SCRIPT_URL kalau kamu ingin sync ke Google Sheets.');
   }
 }
 function exportableState(){
@@ -89,14 +92,12 @@ function exportableState(){
   return data;
 }
 function updateSyncStatus(){
-  const has = !!state.settings.endpoint;
-  $('#syncStatus').textContent = has ? (state.settings.lastStatus || 'Endpoint siap') : 'Lokal';
-  $('#syncDesc').textContent = has
-    ? `Endpoint aktif. Last sync: ${state.settings.lastSync ? new Date(state.settings.lastSync).toLocaleString('id-ID') : 'belum pernah'}`
-    : 'Data tersimpan di browser. Hubungkan Apps Script untuk auto-save ke Spreadsheet.';
-  const info = $('#backendInfo');
-  if(info) info.innerHTML = has ? `Endpoint tersimpan:<br><small class="muted">${safe(state.settings.endpoint)}</small>` : 'Belum ada endpoint.';
+  $('#syncStatus').textContent = state.settings.lastStatus || 'Vercel API';
+  $('#syncDesc').textContent = state.settings.lastSync
+    ? `Auto-sync aktif. Last sync: ${new Date(state.settings.lastSync).toLocaleString('id-ID')}`
+    : 'Auto-sync lewat Vercel API. Jika offline/gagal, data tetap aman di browser.';
 }
+
 
 function completionForHabit(habitId){
   const recent = state.checkins.filter(c => c.habitId === habitId).slice(-7);
@@ -249,7 +250,7 @@ function renderInsight(){
 }
 function renderChat(){
   const box = $('#chatBox');
-  const intro = '<div class="msg ai">Aku bisa bantu menyusun, mendiagnosis, dan merevisi habitmu. Kalau endpoint Apps Script sudah aktif, aku akan pakai Gemini Flash. Kalau belum, aku pakai simulasi lokal.</div>';
+  const intro = '<div class="msg ai">Aku bisa bantu menyusun, mendiagnosis, dan merevisi habitmu. Aku akan memakai Gemini Flash lewat Vercel API. Kalau AI online gagal, aku tetap bisa bantu dengan mode lokal.</div>';
   const messages = state.chat.length ? state.chat.map(m=>`<div class="msg ${m.role}">${safe(m.text)}</div>`).join('') : intro;
   const thinking = aiThinking ? '<div class="msg ai thinking"><span>AI sedang berpikir</span><span class="typing-dots"><i></i><i></i><i></i></span></div>' : '';
   box.innerHTML = messages + thinking;
@@ -293,21 +294,22 @@ function deleteHabit(item){ state.habits = state.habits.filter(x=>x.id!==item); 
 
 async function runAIFitting(){
   if(!state.habits.length) return alert('Tambahkan habit dulu.');
-  if(state.settings.endpoint){
-    try{
-      $('#fitBtn').textContent = 'Meminta AI...';
-      const result = await apiCall('aiHabitFitting', { state: exportableState() }, { timeoutMs: 22000 });
-      if(!result.ok) throw new Error(result.error || 'AI gagal.');
-      applyAIPlan(result.data?.plans || result.plans || []);
-      state.chat.push({role:'ai', text: result.data?.summary || result.summary || 'AI sudah menyusun habit ke ritme hidupmu.'});
-      saveState();
-      return;
-    }catch(err){
-      alert(friendlyAIError(err));
-    }finally{ $('#fitBtn').textContent = 'Jalankan AI Fitting'; }
+  try{
+    $('#fitBtn').textContent = 'Meminta AI...';
+    const result = await apiCall('aiHabitFitting', { state: exportableState() }, { timeoutMs: 22000 });
+    if(!result.ok) throw new Error(result.error || 'AI gagal.');
+    applyAIPlan(result.data?.plans || result.plans || []);
+    state.chat.push({role:'ai', text: result.data?.summary || result.summary || 'AI sudah menyusun habit ke ritme hidupmu.'});
+    saveState();
+    return;
+  }catch(err){
+    state.chat.push({role:'ai', text: friendlyAIError(err)});
+    localFit();
+  }finally{
+    $('#fitBtn').textContent = 'Jalankan AI Fitting';
   }
-  localFit();
 }
+
 function applyAIPlan(plans){
   if(!Array.isArray(plans) || !plans.length) { localFit(); return; }
   state.habits = state.habits.map(h => {
@@ -346,40 +348,42 @@ async function askCoach(message){
     if(btn){ btn.disabled = loading; btn.textContent = loading ? 'Memproses...' : 'Kirim'; }
   };
   setCoachLoading(true);
-  if(state.settings.endpoint){
-    try{
-      const result = await apiCall('aiCoach', { message, state: exportableState() }, { timeoutMs: 20000 });
-      if(!result.ok) throw new Error(result.error || 'AI gagal.');
-      aiThinking = false;
-      state.chat.push({role:'ai', text: result.data?.answer || result.answer || 'AI sudah merespons.'});
-      setCoachLoading(false);
-      saveState();
-      return;
-    }catch(err){
-      aiThinking = false;
-      state.chat.push({role:'ai', text: friendlyAIError(err)});
-    }
+  try{
+    const result = await apiCall('aiCoach', { message, state: exportableState() }, { timeoutMs: 20000 });
+    if(!result.ok) throw new Error(result.error || 'AI gagal.');
+    aiThinking = false;
+    state.chat.push({role:'ai', text: result.data?.answer || result.answer || 'AI sudah merespons.'});
+    setCoachLoading(false);
+    saveState();
+    return;
+  }catch(err){
+    aiThinking = false;
+    state.chat.push({role:'ai', text: friendlyAIError(err)});
   }
-  await new Promise(resolve => setTimeout(resolve, 650));
-  aiThinking = false;
+  await new Promise(resolve => setTimeout(resolve, 450));
   const insight = generateInsight(); const recs = generateRecommendations().join(' ');
   state.chat.push({role:'ai', text:`${insight.body} Rekomendasi: ${recs}`});
   setCoachLoading(false);
   saveState();
 }
+
 async function runWeeklyAI(){
-  if(state.settings.endpoint){
-    try{
-      const result = await apiCall('weeklyReview', { state: exportableState() }, { timeoutMs: 22000 });
-      if(!result.ok) throw new Error(result.error || 'AI gagal.');
-      const text = result.data?.review || result.review || 'Review mingguan selesai.';
-      $('#recommendationList').innerHTML = `<div class="recommend">${safe(text)}</div>` + $('#recommendationList').innerHTML;
-      state.chat.push({role:'ai', text});
-      saveState();
-      return;
-    }catch(err){ state.chat.push({role:'ai', text: friendlyAIError(err)}); saveState(); alert(friendlyAIError(err)); }
-  } else alert('Isi endpoint Apps Script dulu untuk AI Review asli.');
+  try{
+    const result = await apiCall('weeklyReview', { state: exportableState() }, { timeoutMs: 22000 });
+    if(!result.ok) throw new Error(result.error || 'AI gagal.');
+    const text = result.data?.review || result.review || 'Review mingguan selesai.';
+    $('#recommendationList').innerHTML = `<div class="recommend">${safe(text)}</div>` + $('#recommendationList').innerHTML;
+    state.chat.push({role:'ai', text});
+    saveState();
+    return;
+  }catch(err){
+    const fallback = friendlyAIError(err) + ' ' + generateRecommendations().join(' ');
+    $('#recommendationList').innerHTML = `<div class="recommend">${safe(fallback)}</div>` + $('#recommendationList').innerHTML;
+    state.chat.push({role:'ai', text:fallback});
+    saveState();
+  }
 }
+
 
 function seedData(){
   state.identity = 'Muslim produktif, pelajar disiplin, dan tubuh sehat';
@@ -449,12 +453,12 @@ $('#saveFail').addEventListener('click',()=>{ addCheckin(currentFailHabit,'fail'
 $('#reasonGrid').addEventListener('click',e=>{ if(e.target.matches('.reason-btn')){ selectedReason=e.target.dataset.reason; $$('.reason-btn').forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); }});
 $('#coachForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); const msg=f.get('message'); e.target.reset(); askCoach(msg); });
 $$('.quick-prompts button').forEach(b=>b.addEventListener('click',()=>askCoach(b.dataset.prompt)));
-$('#settingsForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); state.settings.endpoint = String(f.get('endpoint') || '').trim(); state.settings.lastStatus = state.settings.endpoint ? 'Endpoint siap' : 'Lokal'; saveState({sync:false}); });
-$('#testEndpoint').addEventListener('click',async()=>{ try{ const r=await apiCall('ping',{}); alert(r.ok ? 'Koneksi berhasil.' : 'Koneksi gagal: '+(r.error||r.message)); }catch(err){ alert('Koneksi gagal: '+err.message); }});
-$('#exportJson').addEventListener('click',()=>download(`ritme-backup-${todayISO()}.json`, JSON.stringify(state,null,2)));
-$('#importJsonBtn').addEventListener('click',()=>$('#importJson').click());
-$('#importJson').addEventListener('change',async(e)=>{ const file=e.target.files[0]; if(!file) return; const text=await file.text(); state={...structuredClone(initialState), ...JSON.parse(text)}; saveState(); });
-$('#wipeLocal').addEventListener('click',()=>{ if(confirm('Hapus data lokal di browser ini?')){ localStorage.removeItem('ritme-state-full'); state=structuredClone(initialState); renderAll(); }});
+
+
+document.querySelector('#exportJson')?.addEventListener('click',()=>download(`ritme-backup-${todayISO()}.json`, JSON.stringify(state,null,2)));
+document.querySelector('#importJsonBtn')?.addEventListener('click',()=>$('#importJson').click());
+document.querySelector('#importJson')?.addEventListener('change',async(e)=>{ const file=e.target.files[0]; if(!file) return; const text=await file.text(); state={...structuredClone(initialState), ...JSON.parse(text)}; saveState(); });
+document.querySelector('#wipeLocal')?.addEventListener('click',()=>{ if(confirm('Hapus data lokal di browser ini?')){ localStorage.removeItem('ritme-state-full'); state=structuredClone(initialState); renderAll(); }});
 
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('./service-worker.js').catch(()=>{})); }
 renderAll();
