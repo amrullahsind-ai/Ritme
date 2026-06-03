@@ -52,6 +52,8 @@
           <h2 id="pageTitle">Dashboard</h2>
         </div>
         <div class="top-actions">
+          <button class="profile-pill" id="profileBtn" data-page="profile"><span id="profileInitial">S</span><b id="profileNameTop">Mahasiswa</b></button>
+          <button class="ghost-btn" id="pullBtn">Ambil data</button>
           <button class="ghost-btn" id="seedBtn">Isi contoh</button>
           <button class="ghost-btn" id="syncBtn">Sync</button>
           <button class="danger-btn" id="resetBtn">Reset</button>
@@ -74,6 +76,18 @@
             <p id="aiInsightBody">Isi ritme hidup dan habit plan dulu agar AI bisa membaca polanya.</p>
           </div>
         </div>
+        <section class="panel daily-panel">
+          <div class="panel-head">
+            <div><p class="eyebrow">Tujuan hari ini</p><h3>Arahkan harimu dari pagi</h3></div>
+            <button class="ghost-btn" id="clearGoalsBtn">Bersihkan</button>
+          </div>
+          <p class="muted">Isi setiap pagi: hari ini mau fokus apa? Ini bukan habit permanen, tapi kompas harian.</p>
+          <form id="goalForm" class="form-grid single">
+            <input name="goal" placeholder="Contoh: Selesai baca 10 halaman / kerjakan tugas Psikologi / olahraga 10 menit" required />
+            <button class="primary-btn">Tambah tujuan</button>
+          </form>
+          <div id="goalList" class="goal-list empty-state">Belum ada tujuan hari ini.</div>
+        </section>
         <section class="panel start-panel">
           <div class="panel-head"><div><p class="eyebrow">Mulai dari sini</p><h3>Ritme dipakai buat apa?</h3></div></div>
           <div class="start-grid">
@@ -108,12 +122,13 @@
         <div class="content-grid two">
           <section class="panel">
             <div class="panel-head"><div><p class="eyebrow">Jadwal tetap</p><h3>Blok waktu hidupmu</h3></div></div>
-            <div class="helper-box"><strong>Isi kalau memang ada jadwal.</strong><br><span>Contoh: kuliah, kerja, organisasi, kelas, perjalanan. Kalau harimu kosong atau tidak punya jadwal tetap, bagian ini boleh dibiarkan kosong.</span></div>
+            <div class="helper-box"><strong>Isi kalau memang ada jadwal.</strong><br><span>Contoh: kuliah, kerja, organisasi, kelas, perjalanan. Jam boleh dikosongkan; cukup pilih blok pagi/siang/sore/malam. Kalau harimu kosong, bagian ini boleh dibiarkan kosong.</span></div>
             <form id="scheduleForm" class="form-grid">
-              <input name="name" placeholder="Contoh: Kuliah" required />
-              <select name="day"><option>Setiap hari</option><option>Senin-Jumat</option><option>Weekend</option></select>
-              <input name="start" type="time" required />
-              <input name="end" type="time" required />
+              <input name="name" placeholder="Contoh: Kuliah / organisasi / kerja tugas" required />
+              <select name="day"><option>Setiap hari</option><option>Senin-Jumat</option><option>Senin</option><option>Selasa</option><option>Rabu</option><option>Kamis</option><option>Jumat</option><option>Sabtu</option><option>Minggu</option><option>Fleksibel</option></select>
+              <select name="block"><option>Pagi</option><option>Siang</option><option>Sore</option><option>Malam</option><option>Fleksibel</option></select>
+              <input name="start" type="time" placeholder="Jam mulai (opsional)" />
+              <input name="end" type="time" placeholder="Jam selesai (opsional)" />
               <select name="energy"><option value="tinggi">Energi tinggi</option><option value="sedang">Energi sedang</option><option value="rendah">Energi rendah</option></select>
               <button class="primary-btn">Tambah jadwal</button>
             </form>
@@ -123,8 +138,9 @@
             <div class="panel-head"><div><p class="eyebrow">Routine anchors</p><h3>Kebiasaan lama</h3></div></div>
             <div class="helper-box"><strong>Ini lebih penting dari jadwal.</strong><br><span>Anchor adalah momen yang hampir pasti terjadi: setelah bangun, setelah mandi, setelah makan, setelah sholat, sebelum tidur. Habit baru akan ditempel ke sini.</span></div>
             <form id="anchorForm" class="form-grid">
-              <input name="trigger" placeholder="Contoh: Setelah Subuh" required />
-              <input name="routine" placeholder="Contoh: Duduk sebentar" required />
+              <select name="relation"><option value="Setelah">Setelah</option><option value="Sebelum">Sebelum</option><option value="Saat">Saat</option></select>
+              <input name="activity" placeholder="Kegiatan nyata: Subuh / mandi / makan / buka laptop" required />
+              <input name="routine" placeholder="Yang biasanya terjadi: duduk sebentar / cek HP" required />
               <select name="type"><option value="baik">Baik</option><option value="netral">Netral</option><option value="buruk">Buruk</option></select>
               <button class="primary-btn">Tambah anchor</button>
             </form>
@@ -152,9 +168,9 @@
           </section>
           <section class="panel">
             <div class="panel-head"><div><p class="eyebrow">Habit baru</p><h3>Bangun kebiasaan</h3></div></div>
-            <div class="helper-box"><strong>Mulai kecil dulu.</strong><br><span>Jangan masukkan 10 habit berat. Untuk awal, cukup 2–3 habit kecil seperti baca 2 halaman, belajar 15 menit, atau tilawah 5 ayat.</span></div>
+            <div class="helper-box"><strong>User cukup isi habit mentah.</strong><br><span>Tulis habit yang kamu mau. Detail seperti pemicu, tempat, formula, reminder, dan target minimum akan disusun oleh AI Fitting.</span></div>
             <form id="habitForm" class="form-grid">
-              <input name="name" placeholder="Contoh: Tilawah" required />
+              <input name="name" placeholder="Contoh: Tilawah / belajar fokus / olahraga" required />
               <input name="target" placeholder="Target: 5 ayat / 3 menit" required />
               <select name="category"><option>Ibadah</option><option>Belajar</option><option>Kesehatan</option><option>Karya</option><option>Relasi</option></select>
               <select name="difficulty"><option value="ringan">Ringan</option><option value="sedang">Sedang</option><option value="berat">Berat</option></select>
@@ -202,6 +218,8 @@
             <button data-prompt="Kenapa habitku sering gagal?">Kenapa sering gagal?</button>
             <button data-prompt="Susun minggu depanku">Susun minggu depan</button>
             <button data-prompt="Habitku terlalu berat">Habit terlalu berat</button>
+            <button data-prompt="Tambahkan habit baca 2 halaman setelah Isya">Tambah habit lewat chat</button>
+            <button data-prompt="Tambahkan tujuan hari ini: selesaikan tugas dan tidur lebih cepat">Tambah tujuan hari ini</button>
           </div>
           <div id="chatBox" class="chat-box"></div>
           <form id="coachForm" class="coach-form">
@@ -211,15 +229,36 @@
         </section>
       </section>
 
+      <section id="profile" class="page">
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Profil lokal</p><h3>Akun & preferensi</h3></div></div>
+          <p class="muted">Untuk versi pribadi, profil ini masih lokal di browser. Auth/login sungguhan bisa ditambahkan nanti kalau Ritme mau dipakai banyak orang.</p>
+          <form id="profileForm" class="form-grid">
+            <input name="name" placeholder="Nama panggilan" />
+            <input name="campus" placeholder="Kampus / jurusan (opsional)" />
+            <select name="mode"><option value="Mahasiswa aktif">Mahasiswa aktif</option><option value="Mahasiswa organisasi">Mahasiswa organisasi</option><option value="Muslim produktif">Muslim produktif</option><option value="Persiapan ujian">Persiapan ujian</option></select>
+            <button class="primary-btn">Simpan profil</button>
+          </form>
+          <div id="profileSummary" class="identity-box">Belum ada profil.</div>
+        </section>
+        <section class="panel">
+          <div class="panel-head"><div><p class="eyebrow">Notifikasi</p><h3>Reminder ringan</h3></div></div>
+          <p class="muted">Notifikasi PWA bersifat ringan: pengingat tujuan pagi dan check-in malam saat browser/app mengizinkan. Tidak semua habit harus pakai jam.</p>
+          <button class="primary-btn" id="enableNotifications">Aktifkan notifikasi</button>
+        </section>
+      </section>
+
       <section id="guide" class="page">
         <section class="panel">
           <div class="panel-head"><div><p class="eyebrow">Panduan</p><h3>Cara kerja Ritme</h3></div></div>
           <div class="recommend-list">
             <div class="recommend"><b>Ritme Hidup</b> dipakai untuk membaca pola harianmu. Jadwal boleh kosong, tapi anchor sebaiknya diisi.</div>
-            <div class="recommend"><b>Habit Plan</b> dipakai untuk menulis kebiasaan baru. AI akan menempelkan habit ke anchor/jadwal yang cocok.</div>
+            <div class="recommend"><b>Habit Plan</b> dipakai untuk menulis habit mentah. AI Fitting akan membuat detailnya: kegiatan tempelan, pemicu, tempat, target minimum, formula habit, dan reminder.</div>
             <div class="recommend"><b>Check-in</b> dipakai setiap hari. Kalau gagal, pilih alasannya agar AI bisa memperbaiki sistem.</div>
             <div class="recommend"><b>Insight</b> menunjukkan pola gagal, habit yang stabil, dan saran minggu depan.</div>
-            <div class="recommend"><b>Sync & AI</b> berjalan otomatis lewat Vercel API. Kamu tidak perlu memasukkan endpoint di aplikasi.</div>
+            <div class="recommend"><b>Tujuan Hari Ini</b> diisi pagi hari untuk mengarahkan hari. Ini beda dari habit: tujuan harian boleh berubah-ubah.</div>
+            <div class="recommend"><b>To-do list</b> tidak dibuat sebagai menu utama dulu. Ritme fokus pada habit dan tujuan harian. Kalau nanti perlu, to-do bisa menjadi fitur ringan di Dashboard.</div>
+            <div class="recommend"><b>Sync & AI</b> berjalan otomatis lewat Vercel API. Kamu tidak perlu memasukkan endpoint di aplikasi. Gunakan tombol Ambil data untuk pull dari Google Sheets.</div>
           </div>
         </section>
         <section class="panel">
@@ -231,7 +270,7 @@
             <div class="start-card"><strong>Anchor digital</strong><p>Sebelum buka TikTok, setelah buka laptop, setelah charger HP.</p></div>
           </div>
         </section>
-      </section></section>
+      </section>
     </main>
   </div>
 

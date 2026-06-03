@@ -40,6 +40,10 @@ function doPost(e) {
       return jsonOutput({ ok: true, message: 'Data tersimpan ke Google Sheets', time: new Date().toISOString() });
     }
 
+    if (action === 'loadAll') {
+      return jsonOutput({ ok: true, state: loadAll_(), time: new Date().toISOString() });
+    }
+
     if (action === 'aiHabitFitting') {
       const result = aiHabitFitting_(payload.state || {});
       appendAIInsight_('aiHabitFitting', result.summary || '', result);
@@ -101,23 +105,35 @@ function resetSheet_(name, headers) {
 function saveAll_(state) {
   const savedAt = new Date().toISOString();
 
-  const summary = resetSheet_('summary', ['savedAt', 'identity', 'habitCount', 'scheduleCount', 'anchorCount', 'checkinCount']);
-  summary.appendRow([savedAt, state.identity || '', (state.habits || []).length, (state.schedules || []).length, (state.anchors || []).length, (state.checkins || []).length]);
+  const summary = resetSheet_('summary', ['savedAt', 'profileName', 'identity', 'goalCount', 'habitCount', 'scheduleCount', 'anchorCount', 'checkinCount']);
+  summary.appendRow([savedAt, (state.profile && state.profile.name) || '', state.identity || '', (state.dailyGoals || []).length, (state.habits || []).length, (state.schedules || []).length, (state.anchors || []).length, (state.checkins || []).length]);
 
-  const schedules = resetSheet_('schedules', ['id', 'name', 'day', 'start', 'end', 'energy', 'savedAt']);
-  (state.schedules || []).forEach(s => schedules.appendRow([s.id, s.name, s.day, s.start, s.end, s.energy, savedAt]));
+  const goals = resetSheet_('daily_goals', ['id', 'date', 'text', 'done', 'createdAt', 'savedAt']);
+  (state.dailyGoals || []).forEach(g => goals.appendRow([g.id, g.date, g.text, g.done, g.createdAt, savedAt]));
 
-  const anchors = resetSheet_('anchors', ['id', 'trigger', 'routine', 'type', 'savedAt']);
-  (state.anchors || []).forEach(a => anchors.appendRow([a.id, a.trigger, a.routine, a.type, savedAt]));
+  const schedules = resetSheet_('schedules', ['id', 'name', 'day', 'block', 'start', 'end', 'energy', 'savedAt']);
+  (state.schedules || []).forEach(s => schedules.appendRow([s.id, s.name, s.day, s.block || '', s.start, s.end, s.energy, savedAt]));
 
-  const habits = resetSheet_('habits', ['id', 'name', 'target', 'category', 'difficulty', 'frequency', 'anchor', 'reason', 'savedAt']);
-  (state.habits || []).forEach(h => habits.appendRow([h.id, h.name, h.target, h.category, h.difficulty, h.frequency, h.anchor, h.reason, savedAt]));
+  const anchors = resetSheet_('anchors', ['id', 'relation', 'activity', 'trigger', 'routine', 'type', 'savedAt']);
+  (state.anchors || []).forEach(a => anchors.appendRow([a.id, a.relation || '', a.activity || '', a.trigger, a.routine, a.type, savedAt]));
+
+  const habits = resetSheet_('habits', ['id', 'name', 'target', 'category', 'difficulty', 'frequency', 'anchor', 'triggerDetail', 'place', 'duration', 'formula', 'reminderBlock', 'reason', 'savedAt']);
+  (state.habits || []).forEach(h => habits.appendRow([h.id, h.name, h.target, h.category, h.difficulty, h.frequency, h.anchor, h.triggerDetail || '', h.place || '', h.duration || '', h.formula || '', h.reminderBlock || '', h.reason, savedAt]));
 
   const checkins = resetSheet_('checkins', ['id', 'habitId', 'date', 'status', 'reason', 'note', 'createdAt', 'savedAt']);
   (state.checkins || []).forEach(c => checkins.appendRow([c.id, c.habitId, c.date, c.status, c.reason, c.note, c.createdAt, savedAt]));
 
   const raw = resetSheet_('raw_state', ['savedAt', 'json']);
   raw.appendRow([savedAt, JSON.stringify(state)]);
+}
+
+
+function loadAll_() {
+  const sh = getSheet_('raw_state', ['savedAt', 'json']);
+  const last = sh.getLastRow();
+  if (last < 2) return {};
+  const json = sh.getRange(last, 2).getValue();
+  try { return JSON.parse(json || '{}'); } catch (err) { return {}; }
 }
 
 function appendAIInsight_(type, text, raw) {
@@ -190,9 +206,11 @@ Susun habit baru ke dalam jadwal dan routine anchor user.
 
 Aturan:
 - Jangan membuat habit terlalu berat.
+- User hanya memasukkan habit mentah; AI yang membuat detailnya.
 - Tempelkan habit baru ke anchor/rutinitas lama yang paling cocok.
 - Pertimbangkan energi, jadwal, dan kesulitan habit.
 - Kalau habit terlalu berat, kecilkan targetnya.
+- Kembalikan juga triggerDetail, place, duration, formula, reminderBlock.
 - Balas JSON valid saja, tanpa markdown.
 
 Format:
@@ -203,7 +221,12 @@ Format:
       "habitId": "id habit jika ada",
       "habit": "nama habit",
       "anchor": "anchor yang dipilih",
+      "triggerDetail": "pemicu detail",
+      "place": "tempat",
       "target": "target realistis",
+      "duration": "durasi awal",
+      "formula": "kalimat habit siap jalan",
+      "reminderBlock": "pagi/siang/sore/malam/tanpa reminder",
       "reason": "alasan singkat"
     }
   ]

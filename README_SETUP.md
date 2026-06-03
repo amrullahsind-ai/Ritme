@@ -1,38 +1,47 @@
-# Ritme Student — Vercel API Version (Groq Ready)
+# Ritme Student — Revised Edition
 
-Versi ini dibuat agar aplikasi tidak lagi meminta endpoint di menu. Frontend langsung memanggil endpoint relatif:
+Versi ini memperbaiki alur Ritme supaya lebih cocok untuk mahasiswa dan lebih sesuai konsep habit stacking.
 
-```txt
-/api/ritme
-```
+## Perubahan utama
 
-Artinya AI dan sync berjalan lewat Vercel API.
+- Habit ditempel ke **kegiatan nyata**, bukan sekadar "sebelum/sesudah" abstrak.
+- Jadwal tidak wajib pakai jam. Kamu bisa cukup pilih blok: Pagi, Siang, Sore, Malam, atau Fleksibel.
+- Tambah **Tujuan Hari Ini** untuk diisi setiap pagi.
+- AI Coach bisa menambah hal dari chat:
+  - tambah tujuan hari ini
+  - tambah habit
+  - tambah jadwal fleksibel
+- Sync sekarang mendukung:
+  - `saveAll` untuk kirim data ke Google Sheets
+  - `loadAll` untuk ambil data dari Google Sheets
+- Heatmap diperbaiki agar berdasarkan **tanggal check-in**, bukan urutan data.
+- Profil lokal ditambahkan. Ini belum login sungguhan, tapi cukup untuk personalisasi.
+- UI/UX diperhalus: goal card, profile pill, habit card, dan energy map lebih jelas.
 
 ## Struktur
 
-- `index.html`, `styles.css`, `app.js` = PWA/frontend
+- `index.html`, `styles.css`, `app.js` = frontend/PWA
 - `api/ritme.js` = backend Vercel untuk Groq/Gemini dan sync
-- `apps-script/Code.gs` = jembatan Google Sheets, opsional tapi dipakai untuk sync ke Spreadsheet
+- `apps-script/Code.gs` = backend Google Sheets
 - `manifest.json`, `service-worker.js`, `icon.svg` = PWA
 
 ## Environment Variables di Vercel
 
-### Opsi 1 — Pakai Groq (disarankan kalau kamu mau pindah dari Gemini)
+### Pakai Groq
 
 ```txt
 AI_PROVIDER=groq
 GROQ_API_KEY=gsk_isi_key_groq_kamu
+GROQ_MODEL=llama-3.3-70b-versatile
+```
+
+Kalau ingin lebih cepat dan ringan:
+
+```txt
 GROQ_MODEL=llama-3.1-8b-instant
 ```
 
-Alternatif model Groq yang bisa kamu coba:
-
-```txt
-llama-3.3-70b-versatile
-qwen/qwen3-32b
-```
-
-### Opsi 2 — Pakai Gemini
+### Pakai Gemini
 
 ```txt
 AI_PROVIDER=gemini
@@ -46,11 +55,21 @@ GEMINI_MODEL=gemini-2.0-flash
 APPS_SCRIPT_URL=https://script.google.com/macros/s/xxxx/exec
 ```
 
-Kalau `APPS_SCRIPT_URL` belum diisi, aplikasi tetap jalan dan data tetap tersimpan lokal di browser, tapi tidak masuk Google Sheets.
+Setelah mengubah Environment Variables, lakukan **Redeploy** di Vercel.
+
+## Cek backend Vercel
+
+Buka:
+
+```txt
+https://namaprojectkamu.vercel.app/api/ritme
+```
+
+Kalau sukses, akan muncul JSON berisi provider, model, dan status key.
 
 ## Setup Google Sheets
 
-1. Buat Google Sheet baru.
+1. Buat Google Sheets baru.
 2. Extensions → Apps Script.
 3. Copy isi `apps-script/Code.gs`.
 4. Paste ke Apps Script.
@@ -60,34 +79,22 @@ Kalau `APPS_SCRIPT_URL` belum diisi, aplikasi tetap jalan dan data tetap tersimp
    - Execute as: Me
    - Who has access: Anyone
 8. Copy URL `/exec`.
-9. Masukkan URL itu ke Environment Variable Vercel: `APPS_SCRIPT_URL`.
+9. Masukkan ke Vercel Environment Variable `APPS_SCRIPT_URL`.
 10. Redeploy Vercel.
 
-## Cara deploy ke Vercel
+## Catatan akun
 
-1. Upload folder ini ke GitHub.
-2. Import repo ke Vercel.
-3. Set Environment Variables sesuai provider AI yang kamu pilih.
-4. Redeploy setelah env ditambahkan/diubah.
+Menu Profil saat ini masih **profil lokal**, bukan login akun sungguhan. Kalau nanti aplikasi mau dipakai banyak user, sebaiknya tambah auth beneran seperti Supabase/Firebase.
 
-## Cek apakah env sudah kebaca
 
-Buka:
+## Update V2 AI Fitting
 
-```txt
-https://namaprojectkamu.vercel.app/api/ritme
-```
+Versi ini mengubah Habit Plan menjadi lebih ramah user:
 
-Kalau berhasil, akan muncul JSON semacam:
+- User cukup menulis habit mentah seperti `Baca buku`, `Olahraga`, `Tilawah`.
+- AI Fitting yang membuat detail: kegiatan tempelan, pemicu detail, tempat, target minimum, durasi awal, formula habit, reminder block, dan alasan.
+- Check-in menampilkan formula habit, bukan hanya nama habit.
+- AI Coach bisa mengusulkan action `addHabit`, `updateHabit`, `addGoal`, dan `addSchedule`.
+- Notifikasi PWA bisa diaktifkan dari menu Profil.
 
-```json
-{ "ok": true, "service": "Ritme Student API", "provider": "groq", "model": "llama-3.1-8b-instant" }
-```
-
-Kalau provider masih `gemini`, berarti environment variable `AI_PROVIDER=groq` belum kebaca atau belum redeploy.
-
-## Catatan penggunaan
-
-- User tidak perlu mengisi endpoint di aplikasi.
-- Kalau tidak punya jadwal tetap, user tetap bisa memakai anchor seperti setelah bangun, setelah mandi, setelah makan, setelah sholat, sebelum tidur.
-- Check-in harian dan alasan gagal adalah data utama untuk AI memperbaiki sistem habit.
+Setelah upload ke GitHub/Vercel, jangan lupa redeploy. Kalau memakai Google Sheets, copy ulang `apps-script/Code.gs` ke Apps Script dan deploy ulang.
