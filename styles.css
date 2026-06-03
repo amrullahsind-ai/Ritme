@@ -143,9 +143,12 @@ textarea{min-height:90px;resize:vertical}
 .heatmap{display:grid;gap:9px}
 .heat-row{display:grid;grid-template-columns:130px repeat(7,1fr);gap:7px;align-items:center}
 .heat-cell{height:28px;border-radius:8px;background:rgba(15,23,42,.05);border:1px solid var(--line)}
-.heat-cell.done{background:rgba(34,197,94,.7)}
-.heat-cell.partial{background:rgba(245,158,11,.7)}
-.heat-cell.fail{background:rgba(239,68,68,.68)}
+.heat-cell.done{background:rgba(34,197,94,.82);border-color:rgba(34,197,94,.35)}
+.heat-cell.partial{background:rgba(245,158,11,.82);border-color:rgba(245,158,11,.35)}
+.heat-cell.fail{background:rgba(239,68,68,.78);border-color:rgba(239,68,68,.35)}
+.heat-legend{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px;color:var(--muted);font-size:12px}
+.heat-legend span{display:flex;align-items:center;gap:6px}
+.heat-legend .heat-cell{width:14px;height:14px;border-radius:4px;display:inline-block}
 .identity-box{
   padding:18px;border-radius:20px;
   background:linear-gradient(135deg,rgba(99,102,241,.09),rgba(34,199,232,.08),rgba(255,255,255,.9));

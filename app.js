@@ -1,6 +1,13 @@
 const $ = (q) => document.querySelector(q);
 const $$ = (q) => [...document.querySelectorAll(q)];
-const todayISO = () => new Date().toISOString().slice(0,10);
+function localISO(date = new Date()){
+  const d = new Date(date);
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+const todayISO = () => localISO(new Date());
 const days = ['Sen','Sel','Rab','Kam','Jum','Sab','Min'];
 const reasons = ['Lupa','Capek','Malas','Waktu tidak cocok','Target terlalu berat','Kegiatan mendadak','Lingkungan tidak mendukung','Mood jelek'];
 const RITME_API_URL = window.RITME_API_URL || '/api/ritme';
@@ -41,10 +48,27 @@ function getDateNDaysAgo(n){
   d.setDate(d.getDate() - n);
   return d;
 }
-function fmtDateISO(d){ return d.toISOString().slice(0,10); }
+function fmtDateISO(d){ return localISO(d); }
+function normalizeDate(value){
+  if(!value) return '';
+  if(typeof value === 'string'){
+    const m = value.match(/\d{4}-\d{2}-\d{2}/);
+    if(m) return m[0];
+  }
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? String(value).slice(0,10) : localISO(d);
+}
+function normalizeStatus(status){
+  const s = String(status || '').toLowerCase();
+  if(['done','selesai','success','berhasil','complete','completed'].includes(s)) return 'done';
+  if(['partial','sebagian','half'].includes(s)) return 'partial';
+  if(['fail','failed','gagal','tidak terlaksana'].includes(s)) return 'fail';
+  return s;
+}
 function dayShortFromISO(iso){
-  const d = new Date(iso + 'T00:00:00');
-  return ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][d.getDay()];
+  const [y,m,d] = String(iso).split('-').map(Number);
+  const dt = new Date(y, (m||1)-1, d||1);
+  return ['Min','Sen','Sel','Rab','Kam','Jum','Sab'][dt.getDay()];
 }
 function todayGoals(){
   return (state.dailyGoals || []).filter(g => g.date === todayISO());
@@ -293,16 +317,19 @@ function guessTime(anchor=''){
 }
 function renderHeatmap(){
   const box = $('#heatmap');
-  if(!state.habits.length || !state.checkins.length){ box.className='heatmap empty-state'; box.textContent='Belum ada check-in.'; return; }
   const dates = Array.from({length:7}, (_,i)=>fmtDateISO(getDateNDaysAgo(6-i)));
+  if(!state.habits.length){ box.className='heatmap empty-state'; box.textContent='Belum ada habit untuk ditampilkan.'; return; }
   box.className='heatmap';
-  box.innerHTML = `<div class="heat-row"><span></span>${dates.map(d=>`<small class="muted">${dayShortFromISO(d)}<br>${d.slice(8)}</small>`).join('')}</div>` + state.habits.map(h=>{
+  const checkins = (state.checkins || []).map(c => ({ ...c, _date: normalizeDate(c.date || c.createdAt), _status: normalizeStatus(c.status) }));
+  box.innerHTML = `<div class="heat-row heat-head"><span></span>${dates.map(d=>`<small class="muted">${dayShortFromISO(d)}<br>${d.slice(8)}</small>`).join('')}</div>` + state.habits.map(h=>{
     const cells = dates.map(d=>{
-      const c = state.checkins.find(x=>x.habitId===h.id && x.date===d);
-      return `<div class="heat-cell ${c?.status || ''}" title="${d}: ${c?.status || 'kosong'}"></div>`;
+      const c = checkins.find(x=>String(x.habitId)===String(h.id) && x._date===d);
+      const cls = c ? c._status : '';
+      const label = c ? labelStatus(c._status) : 'kosong';
+      return `<div class="heat-cell ${cls}" title="${d}: ${label}"></div>`;
     }).join('');
     return `<div class="heat-row"><strong>${safe(h.name)}</strong>${cells}</div>`;
-  }).join('');
+  }).join('') + `<div class="heat-legend"><span><i class="heat-cell done"></i>Selesai</span><span><i class="heat-cell partial"></i>Sebagian</span><span><i class="heat-cell fail"></i>Tidak terlaksana</span></div>`;
 }
 function energyValue(level){
   return level === 'tinggi' ? 82 : level === 'sedang' ? 58 : 34;
@@ -369,7 +396,7 @@ function renderCheckin(){
   if(!state.habits.length){ list.className='checkin-list empty-state'; list.textContent='Belum ada habit aktif untuk hari ini.'; return; }
   list.className='checkin-list';
   list.innerHTML = state.habits.map(h=>{
-    const c = state.checkins.find(x=>x.habitId===h.id && x.date===todayISO());
+    const c = state.checkins.find(x=>String(x.habitId)===String(h.id) && normalizeDate(x.date || x.createdAt)===todayISO());
     const formula = habitFormula(h);
     return `<article class="check-card"><h4>${safe(h.name)}</h4><p class="formula-text small">${safe(formula)}</p><div class="habit-meta">${habitDetailChips(h).map(x=>`<span class="chip">${safe(x)}</span>`).join('')}</div><span class="status ${c?.status==='done'?'good':c?.status==='partial'?'warn':c?.status==='fail'?'bad':''}">${c ? labelStatus(c.status) : 'Belum check-in'}</span><div class="check-actions"><button class="done-btn" onclick="checkHabit('${h.id}','done')">Selesai</button><button class="partial-btn" onclick="checkHabit('${h.id}','partial')">Sebagian</button><button class="fail-btn" onclick="openFail('${h.id}')">Tidak terlaksana</button></div></article>`;
   }).join('');
@@ -421,7 +448,7 @@ function generateRecommendations(){
 }
 
 function addCheckin(habitId, status, reason='', note=''){
-  const existing = state.checkins.findIndex(c=>c.habitId===habitId && c.date===todayISO());
+  const existing = state.checkins.findIndex(c=>String(c.habitId)===String(habitId) && normalizeDate(c.date || c.createdAt)===todayISO());
   const row = { id:id(), habitId, date:todayISO(), status, reason, note, createdAt:new Date().toISOString() };
   if(existing >= 0) state.checkins[existing] = { ...state.checkins[existing], ...row };
   else state.checkins.push(row);
