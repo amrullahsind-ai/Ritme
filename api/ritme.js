@@ -151,10 +151,37 @@ async function handler(req, res){
 
     if(action === 'aiHabitFitting'){
       const state = safeState(payload);
-      const prompt = `Data user:\n${buildContext(state)}\n\nTugas: susun habit user ke kegiatan nyata/anchor paling cocok.\nAturan penting:\n- Habit harus ditempel ke kegiatan nyata, misalnya: Setelah Subuh, Setelah mandi, Setelah makan siang, Setelah buka laptop, Sebelum tidur.\n- Jangan semua kebiasaan wajib punya jam. Jam hanya dipakai kalau ada jadwal tetap.\n- Kalau jadwal kosong, gunakan anchor dan pola energi default mahasiswa.\n- Balas dalam JSON array saja, tanpa markdown.\nFormat:\n[{"habitId":"id habit jika ada","habit":"nama habit","anchor":"Setelah/Sebelum/Saat + kegiatan nyata","target":"target realistis","reason":"alasan singkat"}]`;
+      const prompt = `Data user:
+${buildContext(state)}
+
+Tugas: susun habit mentah user menjadi habit yang siap dijalankan.
+User hanya memasukkan habit mentah. AI yang menentukan detailnya.
+
+Aturan penting:
+- Habit harus ditempel ke kegiatan nyata, bukan sekadar jam. Contoh anchor: Setelah Subuh, Setelah mandi, Setelah makan siang, Setelah buka laptop, Sebelum tidur.
+- Jangan semua kebiasaan wajib punya jam. Jam hanya dipakai kalau ada jadwal tetap.
+- Kalau jadwal kosong, gunakan anchor/rutinitas lama dan pola energi default mahasiswa.
+- Target harus kecil dan realistis.
+- Formula harus berupa kalimat aksi yang jelas dan langsung bisa dilakukan.
+- Reminder block cukup: pagi/siang/sore/malam/tanpa reminder.
+- Balas dalam JSON array saja, tanpa markdown.
+
+Format wajib:
+[{
+  "habitId":"id habit jika ada",
+  "habit":"nama habit",
+  "anchor":"Setelah/Sebelum/Saat + kegiatan nyata",
+  "triggerDetail":"pemicu detail yang lebih spesifik",
+  "place":"tempat paling masuk akal",
+  "target":"target minimum yang realistis",
+  "duration":"durasi awal",
+  "formula":"kalimat habit siap jalan",
+  "reminderBlock":"pagi/siang/sore/malam/tanpa reminder",
+  "reason":"alasan singkat"
+}]`;
       const raw = await callAI(prompt, 'Kamu adalah AI Habit Fitting. Wajib mengembalikan JSON array valid saja, tanpa penjelasan tambahan.');
       const plans = extractJSON(raw) || [];
-      return json(res, 200, { ok:true, data:{ plans, summary:`${AI_PROVIDER === 'groq' ? 'Groq' : 'Gemini'} sudah menyusun habit ke kegiatan nyata.` }, raw });
+      return json(res, 200, { ok:true, data:{ plans, summary:`${AI_PROVIDER === 'groq' ? 'Groq/Llama' : 'Gemini'} sudah membuat formula habit yang siap dijalankan.` }, raw });
     }
 
     return json(res, 400, { ok:false, error:'Action tidak dikenali.' });

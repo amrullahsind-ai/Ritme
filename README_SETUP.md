@@ -22,7 +22,7 @@ Versi ini memperbaiki alur Ritme supaya lebih cocok untuk mahasiswa dan lebih se
 
 - `index.html`, `styles.css`, `app.js` = frontend/PWA
 - `api/ritme.js` = backend Vercel untuk Groq/Gemini dan sync
-- `apps-script/Code.gs` = backend Google Sheets
+- `apps-script/Code.gs` = backend Google Sheets saja, bukan AI
 - `manifest.json`, `service-worker.js`, `icon.svg` = PWA
 
 ## Environment Variables di Vercel
@@ -67,6 +67,10 @@ https://namaprojectkamu.vercel.app/api/ritme
 
 Kalau sukses, akan muncul JSON berisi provider, model, dan status key.
 
+## Setup Google Sheets / Apps Script
+
+Catatan penting: Apps Script di versi ini **tidak memanggil Gemini/Groq**. AI sudah pindah ke Vercel API. Jadi di Apps Script tidak perlu `GEMINI_API_KEY`, `GROQ_API_KEY`, atau model AI apa pun.
+
 ## Setup Google Sheets
 
 1. Buat Google Sheets baru.
@@ -97,4 +101,4 @@ Versi ini mengubah Habit Plan menjadi lebih ramah user:
 - AI Coach bisa mengusulkan action `addHabit`, `updateHabit`, `addGoal`, dan `addSchedule`.
 - Notifikasi PWA bisa diaktifkan dari menu Profil.
 
-Setelah upload ke GitHub/Vercel, jangan lupa redeploy. Kalau memakai Google Sheets, copy ulang `apps-script/Code.gs` ke Apps Script dan deploy ulang.
+Setelah upload ke GitHub/Vercel, jangan lupa redeploy. Kalau memakai Google Sheets, copy ulang `apps-script/Code.gs` ke Apps Script dan deploy ulang. Kode Apps Script sekarang sudah Sheets-only, jadi tidak ada Gemini lagi di sana.
