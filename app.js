@@ -42,6 +42,29 @@ function saveState(opts = {}){
 }
 function id(){ return Math.random().toString(36).slice(2,10); }
 function safe(text){ return String(text ?? '').replace(/[&<>'"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[s])); }
+function formatChatText(text){
+  let out = safe(text || '');
+  out = out.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/\n\s*[-•]\s+/g, '<br>• ');
+  out = out.replace(/\n\s*(\d+)\.\s+/g, '<br>$1. ');
+  out = out.replace(/\n/g, '<br>');
+  return out;
+}
+function isFallbackText(text){
+  const t = String(text || '').toLowerCase();
+  return t.includes('ai online belum bisa dipanggil') || t.includes('mode lokal dulu') || t.includes('isi ritme hidup dan habit plan dulu agar ai bisa membaca polanya');
+}
+function visibleChatMessages(){
+  const arr = [];
+  for(const m of state.chat){
+    if(m.role === 'ai' && isFallbackText(m.text)){
+      const prev = arr[arr.length - 1];
+      if(prev && prev.role === 'ai' && (prev.online || !isFallbackText(prev.text))) continue;
+    }
+    arr.push(m);
+  }
+  return arr;
+}
 
 function getDateNDaysAgo(n){
   const d = new Date();
@@ -429,11 +452,13 @@ function renderInsight(){
 function renderChat(){
   const box = $('#chatBox');
   const intro = '<div class="msg ai">Aku bisa bantu memberi saran dan diagnosis. Aku tidak akan menambah/mengubah habit kecuali kamu jelas meminta dan menekan tombol Terapkan.</div>';
-  const messages = state.chat.length ? state.chat.map((m,i)=>{
+  const visible = visibleChatMessages();
+  const messages = visible.length ? visible.map((m)=>{
+    const i = state.chat.indexOf(m);
     const actions = Array.isArray(m.actions) && m.actions.length && !m.applied
       ? `<div class="action-suggestions"><small>${m.actions.length} aksi siap diterapkan</small><button class="primary-btn tiny-btn" onclick="applyChatAction(${i})">Terapkan</button><button class="ghost-btn tiny-btn" onclick="dismissChatAction(${i})">Abaikan</button></div>`
       : (m.applied ? '<div class="action-suggestions applied"><small>Aksi sudah diterapkan.</small></div>' : '');
-    return `<div class="msg ${m.role}">${safe(m.text)}${actions}</div>`;
+    return `<div class="msg ${m.role}">${formatChatText(m.text)}${actions}</div>`;
   }).join('') : intro;
   const thinking = aiThinking ? '<div class="msg ai thinking"><span>AI sedang berpikir</span><span class="typing-dots"><i></i><i></i><i></i></span></div>' : '';
   box.innerHTML = messages + thinking;
@@ -489,7 +514,7 @@ async function runAIFitting(){
     saveState();
     return;
   }catch(err){
-    state.chat.push({role:'ai', text: friendlyAIError(err)});
+    state.chat.push({role:'ai', text: friendlyAIError(err), localFallback:true});
     localFit();
   }finally{
     $('#fitBtn').textContent = 'Jalankan AI Fitting';
@@ -615,6 +640,7 @@ async function askCoach(message){
   if(!message) return;
   const token = ++coachRequestToken;
   state.chat.push({role:'user', text:message});
+  const requestStartIndex = state.chat.length - 1;
   const localActions = applyLocalCommand(message);
   if(localActions.length){ state.chat.push({role:'ai', text:'Aku sudah menerapkan: '+localActions.join('; ')}); saveState(); return; }
   aiThinking = true;
@@ -632,6 +658,8 @@ async function askCoach(message){
     const actions = Array.isArray(result.data?.actions) ? result.data.actions : [];
     if(!answer.trim()) throw new Error('AI online merespons kosong.');
     aiThinking = false;
+    // Bersihkan pesan fallback lokal lama setelah AI online berhasil menjawab.
+    state.chat = state.chat.filter((m, idx) => !(m.role === 'ai' && isFallbackText(m.text) && idx > Math.max(0, requestStartIndex - 2)));
     state.chat.push({role:'ai', text: answer, actions, applied:false, online:true});
     if(actions.length){
       state.chat.push({role:'ai', text:'Aku menyiapkan beberapa aksi, tapi belum aku terapkan. Tekan tombol Terapkan kalau kamu setuju.', online:true});
@@ -642,10 +670,10 @@ async function askCoach(message){
   }catch(err){
     if(token !== coachRequestToken) return;
     aiThinking = false;
-    state.chat.push({role:'ai', text: friendlyAIError(err)});
+    state.chat.push({role:'ai', text: friendlyAIError(err), localFallback:true});
     await new Promise(resolve => setTimeout(resolve, 250));
     const insight = generateInsight(); const recs = generateRecommendations().join(' ');
-    state.chat.push({role:'ai', text:`${insight.body} Rekomendasi: ${recs}`});
+    state.chat.push({role:'ai', text:`${insight.body} Rekomendasi: ${recs}`, localFallback:true});
     setCoachLoading(false);
     saveState();
   }
