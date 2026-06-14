@@ -82,3 +82,8 @@ Harus muncul JSON semacam:
 ```
 
 Kalau provider masih `groq`, berarti `AI_PROVIDER=gemini` belum kebaca atau belum redeploy.
+
+
+## Catatan AI Coach
+
+Jika backend `/api/ritme` sudah menunjukkan provider Gemini tetapi chat masih menampilkan pesan mode lokal, bersihkan cache PWA atau klik tombol **Bersihkan chat** di AI Coach. Versi ini juga mencegah fallback lokal muncul setelah jawaban online berhasil.

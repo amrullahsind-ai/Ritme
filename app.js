@@ -27,6 +27,7 @@ let state = loadState();
 let currentFailHabit = null;
 let selectedReason = '';
 let aiThinking = false;
+let coachRequestToken = 0;
 
 function loadState(){
   try {
@@ -610,7 +611,9 @@ function applyLocalCommand(message){
 }
 async function askCoach(message){
   if(aiThinking) return;
-  if(!message || !String(message).trim()) return;
+  message = String(message || '').trim();
+  if(!message) return;
+  const token = ++coachRequestToken;
   state.chat.push({role:'user', text:message});
   const localActions = applyLocalCommand(message);
   if(localActions.length){ state.chat.push({role:'ai', text:'Aku sudah menerapkan: '+localActions.join('; ')}); saveState(); return; }
@@ -622,26 +625,30 @@ async function askCoach(message){
   };
   setCoachLoading(true);
   try{
-    const result = await apiCall('aiCoach', { message, state: exportableState() }, { timeoutMs: 20000 });
+    const result = await apiCall('aiCoach', { message, state: exportableState() }, { timeoutMs: 24000 });
+    if(token !== coachRequestToken) return;
     if(!result.ok) throw new Error(result.error || 'AI gagal.');
-    aiThinking = false;
+    const answer = result.data?.answer || result.answer || '';
     const actions = Array.isArray(result.data?.actions) ? result.data.actions : [];
-    state.chat.push({role:'ai', text: result.data?.answer || result.answer || 'AI sudah merespons.', actions, applied:false});
+    if(!answer.trim()) throw new Error('AI online merespons kosong.');
+    aiThinking = false;
+    state.chat.push({role:'ai', text: answer, actions, applied:false, online:true});
     if(actions.length){
-      state.chat.push({role:'ai', text:'Aku menyiapkan beberapa aksi, tapi belum aku terapkan. Tekan tombol Terapkan kalau kamu setuju.'});
+      state.chat.push({role:'ai', text:'Aku menyiapkan beberapa aksi, tapi belum aku terapkan. Tekan tombol Terapkan kalau kamu setuju.', online:true});
     }
     setCoachLoading(false);
     saveState();
     return;
   }catch(err){
+    if(token !== coachRequestToken) return;
     aiThinking = false;
     state.chat.push({role:'ai', text: friendlyAIError(err)});
+    await new Promise(resolve => setTimeout(resolve, 250));
+    const insight = generateInsight(); const recs = generateRecommendations().join(' ');
+    state.chat.push({role:'ai', text:`${insight.body} Rekomendasi: ${recs}`});
+    setCoachLoading(false);
+    saveState();
   }
-  await new Promise(resolve => setTimeout(resolve, 450));
-  const insight = generateInsight(); const recs = generateRecommendations().join(' ');
-  state.chat.push({role:'ai', text:`${insight.body} Rekomendasi: ${recs}`});
-  setCoachLoading(false);
-  saveState();
 }
 
 function applyChatAction(index){
@@ -748,6 +755,15 @@ $('#weeklyAI').addEventListener('click', runWeeklyAI);
 $('#closeModal').addEventListener('click', closeFail);
 $('#saveFail').addEventListener('click',()=>{ addCheckin(currentFailHabit,'fail',selectedReason || 'Lainnya',$('#failNote').value); closeFail(); });
 $('#reasonGrid').addEventListener('click',e=>{ if(e.target.matches('.reason-btn')){ selectedReason=e.target.dataset.reason; $$('.reason-btn').forEach(b=>b.classList.remove('active')); e.target.classList.add('active'); }});
+
+document.querySelector('#clearChatBtn')?.addEventListener('click',()=>{
+  if(confirm('Bersihkan riwayat chat AI di perangkat ini?')){
+    state.chat = [];
+    coachRequestToken++;
+    aiThinking = false;
+    saveState({sync:false});
+  }
+});
 $('#coachForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); const msg=f.get('message'); e.target.reset(); askCoach(msg); });
 $$('.quick-prompts button').forEach(b=>b.addEventListener('click',()=>askCoach(b.dataset.prompt)));
 $('#goalForm')?.addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); state.dailyGoals.push({id:id(), date:todayISO(), text:f.get('goal'), done:false, createdAt:new Date().toISOString()}); e.target.reset(); saveState(); });
