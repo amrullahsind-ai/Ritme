@@ -1,4 +1,4 @@
-const AI_PROVIDER = (process.env.AI_PROVIDER || (process.env.GROQ_API_KEY ? 'groq' : 'gemini')).toLowerCase();
+const AI_PROVIDER = (process.env.AI_PROVIDER || 'gemini').toLowerCase();
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 

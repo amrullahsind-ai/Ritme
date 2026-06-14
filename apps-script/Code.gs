@@ -7,10 +7,12 @@
  * - doPost loadAll: ambil state terakhir dari Spreadsheet
  *
  * AI tidak dipanggil dari Apps Script.
- * AI Groq/Llama dipanggil dari Vercel API `/api/ritme` menggunakan:
- * - AI_PROVIDER=groq
- * - GROQ_API_KEY=...
- * - GROQ_MODEL=llama-3.3-70b-versatile
+ * AI dipanggil dari Vercel API `/api/ritme`, bukan dari Apps Script.
+ * Default terbaru: Gemini lewat Vercel Environment Variables:
+ * - AI_PROVIDER=gemini
+ * - GEMINI_API_KEY=...
+ * - GEMINI_MODEL=gemini-2.0-flash
+ * Groq masih bisa dipakai opsional jika AI_PROVIDER=groq.
  *
  * Setup:
  * 1. Buat Google Sheets kosong.

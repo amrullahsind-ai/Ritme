@@ -1,77 +1,84 @@
-# Ritme Student V3 — Groq + Sheets Only
+# Ritme Student V3 — Gemini + Sheets Only
 
-Versi ini sudah memakai arsitektur bersih:
+Versi ini memakai arsitektur:
 
 ```txt
 AI:
-Ritme PWA → Vercel API `/api/ritme` → Groq/Llama
+Ritme PWA → Vercel API `/api/ritme` → Gemini Flash
 
 Database:
 Ritme PWA → Vercel API `/api/ritme` → Apps Script → Google Sheets
 ```
 
-Apps Script hanya untuk sync Google Sheets. AI tidak lagi dipanggil dari Apps Script.
-
-## Revisi utama V3
-
-- AI Coach tidak langsung membuat/mengubah data kalau user hanya minta saran.
-- AI Coach hanya menyiapkan aksi jika user jelas meminta, lalu user harus menekan tombol **Terapkan**.
-- AI Fitting memakai konsep habit atomik: kecil, sistem > tujuan, identitas, dan 4 hukum perilaku.
-- AI Fitting menghasilkan micro trigger detail seperti: setelah menaruh handuk, setelah melipat sajadah, setelah menaruh HP untuk dicas, bukan sekadar “setelah mandi”.
-- Habit card menampilkan micro trigger, formula, confidence, dan 4 hukum: obvious, attractive, easy, satisfying.
-- Apps Script sudah Sheets-only dan menyimpan field habit baru.
-- Heatmap tetap pakai tanggal lokal.
-- Notifikasi PWA tetap tersedia.
+Apps Script hanya untuk Google Sheets. Tidak ada Gemini/Groq API key di Apps Script.
 
 ## Environment Variables di Vercel
 
-Disarankan:
+Wajib untuk AI Gemini:
+
+```txt
+AI_PROVIDER=gemini
+GEMINI_API_KEY=isi_api_key_gemini_kamu
+GEMINI_MODEL=gemini-2.0-flash
+```
+
+Untuk sync ke Google Sheets:
+
+```txt
+APPS_SCRIPT_URL=https://script.google.com/macros/s/xxxx/exec
+```
+
+Groq masih opsional kalau nanti mau balik lagi:
 
 ```txt
 AI_PROVIDER=groq
 GROQ_API_KEY=gsk_isi_key_groq_kamu
 GROQ_MODEL=llama-3.3-70b-versatile
-APPS_SCRIPT_URL=https://script.google.com/macros/s/xxxx/exec
 ```
-
-Model lebih cepat:
-
-```txt
-GROQ_MODEL=llama-3.1-8b-instant
-```
-
-Setelah env diubah, lakukan **Redeploy**.
 
 ## Setup Google Sheets
 
-1. Buat Google Sheets baru.
+1. Buat Google Sheet baru.
 2. Extensions → Apps Script.
-3. Copy isi `apps-script/Code.gs` dari folder ini.
+3. Copy isi `apps-script/Code.gs`.
 4. Paste ke Apps Script.
 5. Save.
 6. Deploy → New deployment → Web app.
 7. Setting:
    - Execute as: Me
    - Who has access: Anyone
-8. Copy URL `/exec` ke Vercel Environment Variable `APPS_SCRIPT_URL`.
-9. Redeploy Vercel.
+8. Copy URL `/exec`.
+9. Masukkan URL itu ke Vercel sebagai `APPS_SCRIPT_URL`.
+10. Redeploy Vercel.
 
-## Cek backend
+## Cara deploy ke Vercel
+
+1. Upload isi folder ini ke GitHub.
+2. Import repo ke Vercel.
+3. Set Environment Variables:
+   - `AI_PROVIDER=gemini`
+   - `GEMINI_API_KEY`
+   - `GEMINI_MODEL=gemini-2.0-flash`
+   - `APPS_SCRIPT_URL`
+4. Redeploy.
+
+## Cek apakah backend aktif
 
 Buka:
 
 ```txt
-https://nama-project-kamu.vercel.app/api/ritme
+https://namaprojectkamu.vercel.app/api/ritme
 ```
 
-Harus muncul provider `groq` dan model yang kamu pilih.
+Harus muncul JSON semacam:
 
-## Cara update dari versi lama
+```json
+{
+  "ok": true,
+  "service": "Ritme Student API",
+  "provider": "gemini",
+  "model": "gemini-2.0-flash"
+}
+```
 
-1. Upload semua isi folder ini ke GitHub.
-2. Commit: `Update Ritme V3 atomic fitting`.
-3. Tunggu Vercel deploy.
-4. Copy ulang `apps-script/Code.gs` ke Apps Script lama.
-5. Deploy Apps Script sebagai **New version**.
-6. Pastikan env Vercel masih lengkap.
-7. Coba AI Fitting dan check-in baru.
+Kalau provider masih `groq`, berarti `AI_PROVIDER=gemini` belum kebaca atau belum redeploy.
