@@ -130,7 +130,7 @@ function saveAll_(state) {
     anchors.appendRow([a.id, a.relation || '', a.activity || '', a.trigger || '', a.routine || '', a.type || '', savedAt]);
   });
 
-  var habits = resetSheet_('habits', ['id', 'name', 'target', 'category', 'difficulty', 'frequency', 'anchor', 'triggerDetail', 'place', 'duration', 'formula', 'reminderBlock', 'reason', 'savedAt']);
+  var habits = resetSheet_('habits', ['id', 'name', 'target', 'category', 'difficulty', 'frequency', 'anchor', 'microTrigger', 'triggerDetail', 'place', 'duration', 'formula', 'reminderBlock', 'identity', 'obvious', 'attractive', 'easy', 'satisfying', 'confidence', 'reason', 'savedAt']);
   (state.habits || []).forEach(function(h) {
     habits.appendRow([
       h.id,
@@ -140,11 +140,18 @@ function saveAll_(state) {
       h.difficulty,
       h.frequency,
       h.anchor || '',
+      h.microTrigger || '',
       h.triggerDetail || '',
       h.place || '',
       h.duration || '',
       h.formula || '',
       h.reminderBlock || '',
+      h.identity || '',
+      h.obvious || '',
+      h.attractive || '',
+      h.easy || '',
+      h.satisfying || '',
+      h.confidence || '',
       h.reason || '',
       savedAt
     ]);

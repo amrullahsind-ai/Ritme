@@ -101,12 +101,27 @@ function habitFormula(h){
 }
 function habitDetailChips(h){
   return [
-    h.anchor ? `Pemicu: ${h.anchor}` : '',
+    h.anchor ? `Kegiatan: ${h.anchor}` : '',
+    h.microTrigger ? `Micro trigger: ${h.microTrigger}` : '',
+    h.triggerDetail && !h.microTrigger ? `Pemicu: ${h.triggerDetail}` : '',
     h.place ? `Tempat: ${h.place}` : '',
     h.duration ? `Durasi: ${h.duration}` : '',
-    h.reminderBlock ? `Reminder: ${h.reminderBlock}` : ''
+    h.reminderBlock ? `Reminder: ${h.reminderBlock}` : '',
+    h.confidence ? `Kecocokan: ${h.confidence}` : ''
   ].filter(Boolean);
 }
+function habitLawCards(h){
+  const rows = [
+    ['Terlihat', h.obvious],
+    ['Menarik', h.attractive],
+    ['Mudah', h.easy],
+    ['Memuaskan', h.satisfying],
+    ['Identitas', h.identity]
+  ].filter(x=>x[1]);
+  if(!rows.length) return '';
+  return `<div class="habit-laws">${rows.map(([k,v])=>`<div><b>${safe(k)}</b><span>${safe(v)}</span></div>`).join('')}</div>`;
+}
+
 async function requestNotifications(){
   if(!('Notification' in window)) return alert('Browser ini belum mendukung notifikasi PWA.');
   const permission = await Notification.requestPermission();
@@ -388,7 +403,7 @@ function renderPlan(){
     const anchor = h.anchor || (h.anchorRelation && h.anchorActivity ? `${h.anchorRelation} ${h.anchorActivity}` : 'Belum ditempel AI');
     const formula = habitFormula(h);
     const chips = habitDetailChips(h).map(c=>`<span class="chip">${safe(c)}</span>`).join('');
-    return `<article class="habit-card enhanced-habit"><div class="habit-card-head"><h4>${safe(h.name)}</h4><span class="status ${h.formula?'good':'warn'}">${h.formula?'Siap jalan':'Perlu fitting'}</span></div><p class="formula-text">${safe(formula)}</p><div class="habit-meta"><span class="chip">${safe(h.category)}</span><span class="chip">${safe(h.difficulty)}</span><span class="chip">${safe(h.frequency)}x/minggu</span>${chips}</div><p><strong>Ditempel ke:</strong> ${safe(anchor)}</p><p class="muted">${safe(h.reason || 'Jalankan AI Fitting agar habit ini punya pemicu, tempat, target minimum, dan formula yang jelas.')}</p><div class="check-actions"><button class="ghost-btn" onclick="reviseHabit('${h.id}')">Minta revisi AI</button><button class="ghost-btn" onclick="deleteHabit('${h.id}')">Hapus</button></div></article>`;
+    return `<article class="habit-card enhanced-habit"><div class="habit-card-head"><h4>${safe(h.name)}</h4><span class="status ${h.formula?'good':'warn'}">${h.formula?'Siap jalan':'Perlu fitting'}</span></div><p class="formula-text">${safe(formula)}</p><div class="habit-meta"><span class="chip">${safe(h.category)}</span><span class="chip">${safe(h.difficulty)}</span><span class="chip">${safe(h.frequency)}x/minggu</span>${chips}</div><p><strong>Ditempel ke:</strong> ${safe(anchor)}</p>${h.microTrigger ? `<p><strong>Micro trigger:</strong> ${safe(h.microTrigger)}</p>` : ''}${habitLawCards(h)}<p class="muted">${safe(h.reason || 'Jalankan AI Fitting agar habit ini punya pemicu mikro, tempat, target minimum, formula, dan prinsip 4 hukum yang jelas.')}</p><div class="check-actions"><button class="ghost-btn" onclick="reviseHabit('${h.id}')">Minta revisi AI</button><button class="ghost-btn" onclick="deleteHabit('${h.id}')">Hapus</button></div></article>`;
   }).join('');
 }
 function renderCheckin(){
@@ -412,23 +427,18 @@ function renderInsight(){
 }
 function renderChat(){
   const box = $('#chatBox');
-  const intro = '<div class="msg ai">Aku bisa bantu menyusun, mendiagnosis, dan merevisi habitmu. Aku akan memakai AI online lewat Vercel API (Groq atau Gemini, sesuai setting). Kalau AI online gagal, aku tetap bisa bantu dengan mode lokal.</div>';
-  const messages = state.chat.length ? state.chat.map(m=>`<div class="msg ${m.role}">${safe(m.text)}</div>`).join('') : intro;
+  const intro = '<div class="msg ai">Aku bisa bantu memberi saran dan diagnosis. Aku tidak akan menambah/mengubah habit kecuali kamu jelas meminta dan menekan tombol Terapkan.</div>';
+  const messages = state.chat.length ? state.chat.map((m,i)=>{
+    const actions = Array.isArray(m.actions) && m.actions.length && !m.applied
+      ? `<div class="action-suggestions"><small>${m.actions.length} aksi siap diterapkan</small><button class="primary-btn tiny-btn" onclick="applyChatAction(${i})">Terapkan</button><button class="ghost-btn tiny-btn" onclick="dismissChatAction(${i})">Abaikan</button></div>`
+      : (m.applied ? '<div class="action-suggestions applied"><small>Aksi sudah diterapkan.</small></div>' : '');
+    return `<div class="msg ${m.role}">${safe(m.text)}${actions}</div>`;
+  }).join('') : intro;
   const thinking = aiThinking ? '<div class="msg ai thinking"><span>AI sedang berpikir</span><span class="typing-dots"><i></i><i></i><i></i></span></div>' : '';
   box.innerHTML = messages + thinking;
   box.scrollTop = box.scrollHeight;
 }
 
-function renderProfile(){
-  const name = state.profile?.name || 'Mahasiswa';
-  $('#profileNameTop') && ($('#profileNameTop').textContent = name);
-  $('#profileInitial') && ($('#profileInitial').textContent = name.slice(0,1).toUpperCase());
-  const box = $('#profileSummary');
-  if(box){
-    const p = state.profile || {};
-    box.textContent = p.name ? `${p.name} • ${p.mode || 'Mahasiswa aktif'}${p.campus ? ' • '+p.campus : ''}` : 'Belum ada profil. Isi nama panggilan agar aplikasi terasa lebih personal.';
-  }
-}
 function generateInsight(){
   const counts = failureCounts(); const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
   if(top) return {title:`Pola ditemukan: ${top[0]}`, body:`Alasan gagal paling sering adalah ${top[0].toLowerCase()}. Revisi terbaik: kecilkan target, pindahkan waktu, atau ganti anchor.`};
@@ -493,12 +503,19 @@ function applyAIPlan(plans){
     return {
       ...h,
       anchor: p.anchor || p.trigger || h.anchor,
+      microTrigger: p.microTrigger || p.micro_trigger || p.aksiPenutup || h.microTrigger || '',
       triggerDetail: p.triggerDetail || p.detailedTrigger || p.pemicuDetail || h.triggerDetail || '',
       place: p.place || p.tempat || h.place || '',
       target: p.target || p.minimumTarget || p.targetMinimum || h.target,
       duration: p.duration || p.durasi || h.duration || '',
       formula: p.formula || p.habitFormula || h.formula || '',
       reminderBlock: p.reminderBlock || p.reminder || h.reminderBlock || '',
+      identity: p.identity || p.identitas || h.identity || '',
+      obvious: p.obvious || p.makeItObvious || h.obvious || '',
+      attractive: p.attractive || p.makeItAttractive || h.attractive || '',
+      easy: p.easy || p.makeItEasy || h.easy || '',
+      satisfying: p.satisfying || p.makeItSatisfying || h.satisfying || '',
+      confidence: p.confidence || p.kecocokan || h.confidence || '',
       reason: p.reason || p.alasan || h.reason
     };
   });
@@ -527,9 +544,10 @@ function localFit(){
     if(name.includes('belajar') || name.includes('baca')){ pick = anchors.find(a=>anchorText(a).toLowerCase().includes('isya') || anchorText(a).toLowerCase().includes('laptop')) || pick; place='meja belajar'; duration='10–25 menit'; reminderBlock='malam'; }
     if(name.includes('jurnal') || name.includes('tidur')){ pick = anchors.find(a=>anchorText(a).toLowerCase().includes('tidur')) || pick; place='kamar'; duration='2 menit'; reminderBlock='malam'; }
     const anchor = anchorText(pick);
-    const triggerDetail = `${anchor}${pick.routine ? ' ketika biasanya '+pick.routine : ''}`;
-    const formula = `${triggerDetail}, aku akan ${h.name} ${target} di ${place}.`;
-    return { ...h, anchor, triggerDetail, place, duration, target, reminderBlock, formula, reason: `Cocok ditempel ke ${anchor} karena momen ini sudah ada dan lebih mudah dijadikan pemicu.` };
+    const microTrigger = microTriggerForAnchor(anchor, name);
+    const triggerDetail = microTrigger ? `${microTrigger}` : `${anchor}${pick.routine ? ' ketika biasanya '+pick.routine : ''}`;
+    const formula = `Setelah ${triggerDetail.replace(/^setelah\s+/i,'')}, aku akan ${h.name} ${target} di ${place} selama ${duration}.`;
+    return { ...h, anchor, microTrigger, triggerDetail, place, duration, target, reminderBlock, formula, identity: state.identity || 'pribadi yang lebih konsisten', obvious:`Mulai tepat setelah ${triggerDetail}.`, attractive:'Pasangkan dengan hal ringan yang disukai agar terasa lebih menyenangkan.', easy:`Mulai dari ${target}, bukan versi berat.`, satisfying:'Centang check-in setelah selesai agar terasa ada penutup.', confidence:'sedang', reason: `Cocok ditempel ke ${anchor} dengan micro trigger ${microTrigger || triggerDetail}.` };
   });
   state.chat.push({role:'ai', text:'Aku sudah menyusun habit memakai simulasi lokal. Hubungkan Vercel API untuk memakai AI online.'});
   saveState();
@@ -540,17 +558,24 @@ function applyAIActions(actions){
     if(!a || !a.type) return;
     if(a.type === 'addGoal' && a.text) state.dailyGoals.push({id:id(), date:todayISO(), text:a.text, done:false, createdAt:new Date().toISOString()});
     if(a.type === 'addSchedule' && a.name) state.schedules.push({id:id(), name:a.name, day:a.day||'Fleksibel', block:a.block||'Fleksibel', start:a.start||'', end:a.end||'', energy:a.energy||'sedang'});
-    if(a.type === 'addHabit' && a.name) state.habits.push({id:id(), name:a.name, target:a.target||'versi kecil', category:a.category||'Belajar', difficulty:a.difficulty||'ringan', frequency:String(a.frequency||7), anchor:a.anchor||'', triggerDetail:a.triggerDetail||'', place:a.place||'', duration:a.duration||'', formula:a.formula||'', reminderBlock:a.reminderBlock||'', reason:a.reason||'Diusulkan AI.'});
+    if(a.type === 'addHabit' && a.name) state.habits.push({id:id(), name:a.name, target:a.target||'versi kecil', category:a.category||'Belajar', difficulty:a.difficulty||'ringan', frequency:String(a.frequency||7), anchor:a.anchor||'', microTrigger:a.microTrigger||'', triggerDetail:a.triggerDetail||'', place:a.place||'', duration:a.duration||'', formula:a.formula||'', reminderBlock:a.reminderBlock||'', identity:a.identity||'', obvious:a.obvious||'', attractive:a.attractive||'', easy:a.easy||'', satisfying:a.satisfying||'', confidence:a.confidence||'', reason:a.reason||'Diusulkan AI.'});
     if((a.type === 'updateHabit' || a.type === 'reviseHabit') && (a.habitId || a.name)){
       const h = state.habits.find(x=>x.id===a.habitId || x.name.toLowerCase() === String(a.name||'').toLowerCase());
       if(h){
         Object.assign(h, {
           anchor:a.anchor || h.anchor,
+          microTrigger:a.microTrigger || h.microTrigger || '',
           triggerDetail:a.triggerDetail || h.triggerDetail || '',
           place:a.place || h.place || '',
           target:a.target || h.target,
           duration:a.duration || h.duration || '',
           formula:a.formula || h.formula || '',
+          identity:a.identity || h.identity || '',
+          obvious:a.obvious || h.obvious || '',
+          attractive:a.attractive || h.attractive || '',
+          easy:a.easy || h.easy || '',
+          satisfying:a.satisfying || h.satisfying || '',
+          confidence:a.confidence || h.confidence || '',
           reminderBlock:a.reminderBlock || h.reminderBlock || '',
           reason:a.reason || h.reason
         });
@@ -572,7 +597,7 @@ function applyLocalCommand(message){
     const m = raw.match(/(.+?)\s+(setelah|sebelum|saat)\s+(.+)/i);
     if(m){ name = m[1].trim(); anchor = `${m[2][0].toUpperCase()+m[2].slice(1)} ${m[3].trim()}`; }
     if(name){
-      state.habits.push({id:id(), name, target, category:'Belajar', difficulty:'ringan', frequency:'7', anchor, anchorRelation:'', anchorActivity:'', reason:'Ditambahkan dari AI Coach/chat.'});
+      state.habits.push({id:id(), name, target, category:'Belajar', difficulty:'ringan', frequency:'7', anchor, microTrigger:'', triggerDetail:'', place:'', duration:'', formula:'', reminderBlock:'', identity:'', obvious:'', attractive:'', easy:'', satisfying:'', confidence:'', anchorRelation:'', anchorActivity:'', reason:'Ditambahkan dari AI Coach/chat.'});
       actions.push(`Habit ditambahkan: ${name}${anchor ? ' → '+anchor : ''}`);
     }
   }
@@ -600,10 +625,10 @@ async function askCoach(message){
     const result = await apiCall('aiCoach', { message, state: exportableState() }, { timeoutMs: 20000 });
     if(!result.ok) throw new Error(result.error || 'AI gagal.');
     aiThinking = false;
-    state.chat.push({role:'ai', text: result.data?.answer || result.answer || 'AI sudah merespons.'});
-    if(Array.isArray(result.data?.actions) && result.data.actions.length){
-      applyAIActions(result.data.actions);
-      state.chat.push({role:'ai', text:'Aku juga menemukan aksi yang bisa diterapkan. Beberapa sudah aku tambahkan otomatis jika formatnya aman.'});
+    const actions = Array.isArray(result.data?.actions) ? result.data.actions : [];
+    state.chat.push({role:'ai', text: result.data?.answer || result.answer || 'AI sudah merespons.', actions, applied:false});
+    if(actions.length){
+      state.chat.push({role:'ai', text:'Aku menyiapkan beberapa aksi, tapi belum aku terapkan. Tekan tombol Terapkan kalau kamu setuju.'});
     }
     setCoachLoading(false);
     saveState();
@@ -616,6 +641,23 @@ async function askCoach(message){
   const insight = generateInsight(); const recs = generateRecommendations().join(' ');
   state.chat.push({role:'ai', text:`${insight.body} Rekomendasi: ${recs}`});
   setCoachLoading(false);
+  saveState();
+}
+
+function applyChatAction(index){
+  const msg = state.chat[index];
+  if(!msg || !Array.isArray(msg.actions) || !msg.actions.length || msg.applied) return;
+  applyAIActions(msg.actions);
+  msg.applied = true;
+  state.chat.push({role:'ai', text:'Aksi sudah diterapkan ke Ritme.'});
+  saveState();
+}
+function dismissChatAction(index){
+  const msg = state.chat[index];
+  if(!msg) return;
+  msg.actions = [];
+  msg.applied = false;
+  state.chat.push({role:'ai', text:'Oke, aksi tidak diterapkan.'});
   saveState();
 }
 
@@ -654,9 +696,9 @@ function seedData(){
     {id:id(), relation:'Sebelum', activity:'tidur', trigger:'Sebelum tidur', routine:'cek HP', type:'buruk'}
   ];
   state.habits = [
-    {id:id(), name:'Tilawah', target:'5 ayat', category:'Ibadah', difficulty:'ringan', frequency:'7', anchor:'Setelah Subuh', triggerDetail:'Setelah Subuh ketika masih duduk sebentar', place:'kamar/masjid', duration:'5 menit', reminderBlock:'pagi', formula:'Setelah Subuh ketika masih duduk sebentar, aku akan tilawah 5 ayat di kamar atau masjid.', reason:'Dekat dengan suasana ibadah pagi.'},
-    {id:id(), name:'Stretching', target:'3 menit', category:'Kesehatan', difficulty:'ringan', frequency:'5', anchor:'Setelah mandi', triggerDetail:'Setelah selesai mandi dan tubuh sudah segar', place:'kamar', duration:'3 menit', reminderBlock:'pagi', formula:'Setelah selesai mandi, aku akan stretching ringan 3 menit di kamar.', reason:'Tubuh sudah aktif, target kecil.'},
-    {id:id(), name:'Belajar fokus', target:'25 menit', category:'Belajar', difficulty:'sedang', frequency:'5', anchor:'Setelah Isya', triggerDetail:'Setelah Isya dan membuka laptop', place:'meja belajar', duration:'25 menit', reminderBlock:'malam', formula:'Setelah Isya dan membuka laptop, aku akan belajar fokus 25 menit di meja belajar.', reason:'Slot malam cukup tenang.'}
+    {id:id(), name:'Tilawah', target:'5 ayat', category:'Ibadah', difficulty:'ringan', frequency:'7', anchor:'Setelah Subuh', microTrigger:'melipat sajadah setelah sholat Subuh', triggerDetail:'setelah melipat sajadah selesai sholat Subuh', place:'kamar/masjid', duration:'5 menit', reminderBlock:'pagi', formula:'Setelah melipat sajadah selesai sholat Subuh, aku akan tilawah 5 ayat di kamar atau masjid selama 5 menit.', identity:'Muslim yang menjaga kedekatan dengan Al-Qur’an', obvious:'Sajadah menjadi tanda mulai.', attractive:'Baca dengan mushaf/aplikasi favorit.', easy:'Mulai hanya 5 ayat.', satisfying:'Centang selesai setelah baca.', confidence:'tinggi', reason:'Dekat dengan suasana ibadah pagi.'},
+    {id:id(), name:'Stretching', target:'3 menit', category:'Kesehatan', difficulty:'ringan', frequency:'5', anchor:'Setelah mandi', microTrigger:'menaruh handuk setelah mandi', triggerDetail:'setelah menaruh handuk setelah mandi', place:'kamar', duration:'3 menit', reminderBlock:'pagi', formula:'Setelah menaruh handuk setelah mandi, aku akan stretching ringan 3 menit di kamar.', identity:'Orang yang merawat tubuhnya', obvious:'Handuk yang digantung menjadi tanda mulai.', attractive:'Boleh sambil putar lagu pendek.', easy:'Mulai hanya 3 menit.', satisfying:'Centang selesai setelah stretching.', confidence:'tinggi', reason:'Micro trigger-nya jelas dan tubuh sudah aktif.'},
+    {id:id(), name:'Belajar fokus', target:'25 menit', category:'Belajar', difficulty:'sedang', frequency:'5', anchor:'Setelah Isya', microTrigger:'laptop menyala dan meja belajar terbuka setelah Isya', triggerDetail:'setelah laptop menyala dan meja belajar terbuka setelah Isya', place:'meja belajar', duration:'25 menit', reminderBlock:'malam', formula:'Setelah laptop menyala dan meja belajar terbuka setelah Isya, aku akan belajar fokus 25 menit di meja belajar.', identity:'Mahasiswa pembelajar', obvious:'Laptop menyala jadi tanda mulai.', attractive:'Mulai dari materi yang paling jelas dulu.', easy:'Pakai timer 25 menit.', satisfying:'Centang dan tulis 1 kalimat hasil belajar.', confidence:'sedang', reason:'Slot malam cukup tenang.'}
   ];
   state.checkins = [];
   const dates = [...Array(7)].map((_,i)=>{ const d = new Date(); d.setDate(d.getDate()-(6-i)); return d.toISOString().slice(0,10); });
@@ -700,7 +742,7 @@ $('#pullBtn')?.addEventListener('click',()=>pullAll(true));
 $('#scheduleForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); state.schedules.push({id:id(), name:f.get('name'), day:f.get('day'), block:f.get('block'), start:f.get('start') || '', end:f.get('end') || '', energy:f.get('energy')}); e.target.reset(); saveState(); });
 $('#anchorForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); state.anchors.push({id:id(), relation:f.get('relation'), activity:f.get('activity'), trigger:`${f.get('relation')} ${f.get('activity')}`, routine:f.get('routine'), type:f.get('type')}); e.target.reset(); saveState(); });
 $('#identityForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); state.identity = f.get('identity') || state.identity; e.target.reset(); saveState(); });
-$('#habitForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); state.habits.push({id:id(), name:f.get('name'), target:f.get('target') || 'versi kecil', category:f.get('category'), difficulty:f.get('difficulty'), frequency:f.get('frequency'), anchor:'', triggerDetail:'', place:'', duration:'', formula:'', reminderBlock:'', reason:'Menunggu AI Fitting untuk dibuat lebih detail.'}); e.target.reset(); saveState(); });
+$('#habitForm').addEventListener('submit',e=>{ e.preventDefault(); const f=new FormData(e.target); state.habits.push({id:id(), name:f.get('name'), target:f.get('target') || 'versi kecil', category:f.get('category'), difficulty:f.get('difficulty'), frequency:f.get('frequency'), anchor:'', microTrigger:'', triggerDetail:'', place:'', duration:'', formula:'', reminderBlock:'', identity:'', obvious:'', attractive:'', easy:'', satisfying:'', confidence:'', reason:'Menunggu AI Fitting untuk dibuat lebih detail.'}); e.target.reset(); saveState(); });
 $('#fitBtn').addEventListener('click', runAIFitting);
 $('#weeklyAI').addEventListener('click', runWeeklyAI);
 $('#closeModal').addEventListener('click', closeFail);
